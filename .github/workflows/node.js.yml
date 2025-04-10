@@ -38,6 +38,8 @@ jobs:
 
             git clone https://github.com/Unknown-Bytes/listapro-frontend.git
 
+            cd listapro-frontend
+
             git pull 
             
             # Criar ou atualizar arquivo .env com a URL do backend
