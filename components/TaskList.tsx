@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { updateTask, deleteTask, createTask, fetchTasksByList } from '@/lib/api';
 
@@ -17,7 +17,7 @@ export default function TaskList({ list, onListsChange }: TaskListProps) {
   const [editingTaskText, setEditingTaskText] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasksByList(list.ID);
@@ -27,34 +27,27 @@ export default function TaskList({ list, onListsChange }: TaskListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [list.ID]);
 
   useEffect(() => {
     loadTasks();
-  }, [loadTasks, list.ID]);
-  
+  }, [loadTasks]);
 
   const handleCreateTask = async () => {
     if (!newTaskText.trim()) return;
     
     try {
-      await createTask(list.ID, newTaskText.trim());
+      setLoading(true);
+      const newTask = await createTask(list.ID, newTaskText.trim());
+      setTasks(prev => [...prev, newTask]);
       setNewTaskText('');
       setIsAddingTask(false);
-      await loadTasks();
       await onListsChange();
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
-    }
-  };
-
-  const handleUpdateTask = async (task: Task) => {
-    try {
-      await updateTask(task.ID, { ...task });
-      await loadTasks();
-      await onListsChange();
-    } catch (error) {
-      console.error('Erro ao atualizar tarefa:', error);
+      loadTasks(); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,40 +55,53 @@ export default function TaskList({ list, onListsChange }: TaskListProps) {
     if (!editingTaskText.trim()) return;
     
     try {
-      const task = tasks.find(t => t.ID === id);
-      if (!task) return;
-      
-      await updateTask(id, { ...task, Text: editingTaskText.trim() });
+      setLoading(true);
+      setTasks(prev => prev.map(task => 
+        task.ID === id ? { ...task, Text: editingTaskText.trim() } : task
+      ));
+      await updateTask(id, { Text: editingTaskText.trim() });
       setEditingTaskId(null);
       setEditingTaskText('');
-      await loadTasks();
       await onListsChange();
     } catch (error) {
       console.error('Erro ao atualizar texto da tarefa:', error);
+      loadTasks(); 
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteTask = async (id: number) => {
     try {
+      setLoading(true);
+      setTasks(prev => prev.filter(task => task.ID !== id));
       await deleteTask(id);
-      await loadTasks();
       await onListsChange();
     } catch (error) {
       console.error('Erro ao excluir tarefa:', error);
+      loadTasks(); 
+    } finally {
+      setLoading(false);
     }
   };
 
+  const toggleTaskCompletion = async (task: Task) => {
+    try {
+      setTasks(prev => prev.map(t => 
+        t.ID === task.ID ? { ...t, IsCompleted: !t.IsCompleted } : t
+      ));
+      await updateTask(task.ID, { IsCompleted: !task.IsCompleted });
+      await onListsChange();
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+      loadTasks(); 
+    }
+  };
   const startEditing = (task: Task) => {
     setEditingTaskId(task.ID);
     setEditingTaskText(task.Text);
   };
 
-  const toggleTaskCompletion = (task: Task) => {
-    handleUpdateTask({
-      ...task,
-      IsCompleted: !task.IsCompleted
-    });
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 max-w-3xl mx-auto">
