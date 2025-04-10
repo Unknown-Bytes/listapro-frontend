@@ -22,6 +22,9 @@ const api = axios.create({
   },
 });
 
+// Exportando o api para poder ser mockado nos testes
+export default api;
+
 // Funções para listas
 export const fetchLists = async (): Promise<TaskList[]> => {
   const response = await api.get('/lists');
