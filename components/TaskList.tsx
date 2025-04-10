@@ -31,7 +31,8 @@ export default function TaskList({ list, onListsChange }: TaskListProps) {
 
   useEffect(() => {
     loadTasks();
-  }, [list.ID]);
+  }, [loadTasks, list.ID]);
+  
 
   const handleCreateTask = async () => {
     if (!newTaskText.trim()) return;
