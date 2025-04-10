@@ -35,7 +35,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/app
-            git pull
+
+            git clone https://github.com/Unknown-Bytes/listapro-frontend.git
+
+            git pull 
             
             # Criar ou atualizar arquivo .env com a URL do backend
             echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" > .env
