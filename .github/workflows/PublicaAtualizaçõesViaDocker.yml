@@ -53,7 +53,7 @@ jobs:
                 username: ${{ secrets.DOCKER_USERNAME }}
                 password: ${{ secrets.DOCKER_PASSWORD }}
             - name: Baixar imagem Docker
-              run: docker pull ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
+              run: sudo docker pull ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
             - name: Parar e remover contêineres existentes
               run: |
                 docker stop listapro-frontend || true
