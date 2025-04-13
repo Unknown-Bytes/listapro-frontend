@@ -66,6 +66,6 @@ jobs:
                   -e NEXT_PUBLIC_API_URL=${{ secrets.BACKEND_URL }} \
                   ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
             - name: Verificar logs do contêiner
-              run: docker logs nextjs-app
+              run: docker logs listapro-frontend
             - name: Verificar status do contêiner
               run: docker ps -a
