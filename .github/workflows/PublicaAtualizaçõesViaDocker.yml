@@ -62,7 +62,7 @@ jobs:
               run: |
                 docker run -d \
                   --name listapro-frontend \
-                  -p 80:80 \
+                  -p 3000:3000 \
                   -e NEXT_PUBLIC_API_URL=${{ secrets.BACKEND_URL }} \
                   ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
             - name: Verificar logs do contêiner
