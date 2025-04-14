@@ -56,16 +56,16 @@ jobs:
               run: sudo docker pull ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
             - name: Parar e remover contêineres existentes
               run: |
-                docker stop listapro-frontend || true
-                docker rm listapro-frontend || true
+                sudo docker stop listapro-frontend || true
+                sudo docker rm listapro-frontend || true
             - name: Executar contêineres
               run: |
-                docker run -d \
+                sudo docker run -d \
                   --name listapro-frontend \
                   -p 3000:3000 \
                   -e NEXT_PUBLIC_API_URL=${{ secrets.BACKEND_URL }} \
                   ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
             - name: Verificar logs do contêiner
-              run: docker logs listapro-frontend
+              run: sudo docker logs listapro-frontend
             - name: Verificar status do contêiner
-              run: docker ps -a
+              run: sudo docker ps -a
