@@ -2,42 +2,10 @@ version: '3'
 
 services:
   nextjs:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: brunovn7/listapro-frontend:latest
+    container_name: listapro-frontend
     restart: always
-    container_name: nextjs-app
+    ports:
+      - "127.0.0.1:3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=${BACKEND_URL}
-    networks:
-      - app-network
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - nextjs
-    restart: always
-    container_name: nginx
-    networks:
-      - app-network
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
