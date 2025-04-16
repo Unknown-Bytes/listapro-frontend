@@ -67,7 +67,7 @@ jobs:
             --name listapro-frontend \
             --network host \
             --restart unless-stopped \
-            -p 127.0.0.1:3000:3000 \
+            -p 3000:3000 \
             -e NEXT_PUBLIC_API_URL=${{ secrets.BACKEND_URL }} \
             ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
 
