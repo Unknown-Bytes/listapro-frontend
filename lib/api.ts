@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.BACKEND_URL || 'http://localhost:8080/api';
+const API_URL = process.env.BACKEND_URL || 'http://10.0.6.223:8080/api';
 
 export interface Task {
   ID: number;
