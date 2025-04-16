@@ -58,13 +58,8 @@ jobs:
       
       - name: Criar diretórios necessários
         run: |
-          mkdir -p nginx/conf.d
           mkdir -p certbot/conf
           mkdir -p certbot/www
-      
-      - name: Configurar Nginx
-        run: |
-          echo "${{ secrets.NGINX_CONFIG }}" > nginx/conf.d/default.conf
       
       - name: Baixar imagem Docker
         run: sudo docker pull ${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest
@@ -81,16 +76,16 @@ jobs:
         id: check_certs
         run: |
           if [ ! -d "./certbot/conf/live/petone.site" ]; then
-            echo "::set-output name=exists::false"
+            echo "exists=false" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=exists::true"
+            echo "exists=true" >> $GITHUB_OUTPUT
           fi
       
       - name: Obter certificados iniciais
         if: steps.check_certs.outputs.exists == 'false'
         run: |
-          sudo chmod +x ./init-letsencrypt.sh
-          sudo ./init-letsencrypt.sh
+          sudo chmod +x ./scripts/init-letsencrypt.sh
+          sudo ./scripts/init-letsencrypt.sh
       
       - name: Verificar logs dos contêineres
         run: |
