@@ -1,36 +1,36 @@
-# Estágio de build
+# Build stage
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copiar arquivos de configuração do projeto
-COPY package.json package-lock.json ./
-
-# Instalar dependências
+# Copiar os arquivos de package.json e instalar dependências
+COPY package*.json ./
 RUN npm ci
 
-# Copiar o código-fonte
+# Copiar o restante do código fonte
 COPY . .
 
-# Construir a aplicação
+# Modificar next.config.js para adicionar output: 'export'
+RUN if [ -f next.config.js ]; then \
+    sed -i "/module.exports/c\module.exports = { ...nextConfig, output: 'export' };" next.config.js; \
+    else \
+    echo "module.exports = { output: 'export' };" > next.config.js; \
+    fi
+
+# Construir o aplicativo Next.js (agora com exportação estática)
 RUN npm run build
 
-# Estágio de produção
-FROM node:18-alpine AS runner
+# Nginx stage
+FROM nginx:alpine
 
-WORKDIR /app
+# Copiar os arquivos estáticos gerados
+COPY --from=builder /app/out /usr/share/nginx/html
 
-ENV NODE_ENV=production
+# Copiar a configuração do Nginx personalizada
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copiar apenas os arquivos necessários do estágio de build
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Expor a porta 80
+EXPOSE 80
 
-# Expor a porta que o Next.js usa
-EXPOSE 3000
-
-# Comando para iniciar a aplicação
-CMD ["npm", "start"]    
+# Iniciar o Nginx
+CMD ["nginx", "-g", "daemon off;"]
