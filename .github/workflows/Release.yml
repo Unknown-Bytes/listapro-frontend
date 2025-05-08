@@ -1,7 +1,10 @@
-name: CI/CD 
+name: Release-CI/CD 
 
 on:
   push:
+    branches:
+      - release
+  pull_request:
     branches:
       - release
 
