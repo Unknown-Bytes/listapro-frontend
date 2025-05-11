@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: production
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: "listapro"
+  POSTGRES_USER: "backend"
+  POSTGRES_PASSWORD: "@AtListaPr02025"
