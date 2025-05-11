@@ -70,4 +70,4 @@ jobs:
             -n production
             
       - name: Verificar rollout do deploy
-        run: kubectl rollout status deployment/nextjs-frontend -n stage
+        run: kubectl rollout status deployment/nextjs-frontend -n production
