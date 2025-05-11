@@ -63,11 +63,11 @@ jobs:
       - name: Configurar acesso ao cluster
         run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ secrets.CLUSTER_NAME_PROD }}
         
-      - name: Atualizar imagem no deployment do namespace 'stage'
+      - name: Atualizar imagem no deployment do namespace 'production'
         run: |
           kubectl set image deployment/nextjs-frontend \
             listapro-frontend=${{ secrets.DOCKER_USERNAME }}/listapro-frontend:latest-${{ steps.vars.outputs.short_sha }} \
-            -n stage
+            -n production
             
       - name: Verificar rollout do deploy
         run: kubectl rollout status deployment/nextjs-frontend -n stage
