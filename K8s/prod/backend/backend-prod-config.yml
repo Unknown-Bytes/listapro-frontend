@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: production
+  labels:
+    app: backend
+data:
+  DB_HOST: "postgres"
+  DB_NAME: "listapro"
+  DB_USER: "backend"
+  DB_PASSWORD: "@AtListaPr02025"
+  DB_PORT: "5432"
+  DB_SSLMODE: "disable"
