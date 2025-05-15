@@ -82,8 +82,6 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-      <div className="flex items-center justify-between mb-6 flex-col">
-        <p>Esse aqui é o ambiente de produção</p>
         <h1 className="text-xl font-bold text-gray-800">Minhas Listas</h1>
       </div>
 
