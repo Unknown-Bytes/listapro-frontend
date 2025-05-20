@@ -8,4 +8,4 @@ metadata:
 data:
   POSTGRES_DB: "listapro"
   POSTGRES_USER: "backend"
-  POSTGRES_PASSWORD: "@AtListaPr02025"
+  POSTGRES_PASSWORD: "QEF0TGlzdGFQcjAyMDI1"
