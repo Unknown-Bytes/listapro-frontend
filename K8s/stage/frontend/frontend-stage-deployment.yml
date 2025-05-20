@@ -41,3 +41,8 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 0
+          maxSurge: 1
