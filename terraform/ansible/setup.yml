@@ -1,0 +1,213 @@
+- name: Configurar ambiente de monitoramento com Docker, Grafana e Prometheus
+  hosts: monitoring
+  become: yes
+  vars:
+    docker_compose_version: "2.21.0"
+
+  tasks:
+    - name: Atualizar cache do apt
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar pacotes necessários
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+        state: present
+
+    - name: Adicionar chave GPG do Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Adicionar repositório do Docker
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Instalar Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+        state: present
+
+    - name: Iniciar e habilitar Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Adicionar usuário atual ao grupo docker
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Instalar Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Criar diretório para monitoramento
+      file:
+        path: /opt/monitoring
+        state: directory
+        mode: '0755'
+
+    - name: Criar arquivo docker-compose.yml
+      copy:
+        content: |
+          version: '3.8'
+          
+          services:
+            prometheus:
+              image: prom/prometheus:latest
+              container_name: prometheus
+              ports:
+                - "9090:9090"
+              volumes:
+                - ./prometheus.yml:/etc/prometheus/prometheus.yml
+                - prometheus_data:/prometheus
+              command:
+                - '--config.file=/etc/prometheus/prometheus.yml'
+                - '--storage.tsdb.path=/prometheus'
+                - '--web.console.libraries=/etc/prometheus/console_libraries'
+                - '--web.console.templates=/etc/prometheus/consoles'
+                - '--web.enable-lifecycle'
+                - '--web.enable-admin-api'
+              restart: unless-stopped
+              networks:
+                - monitoring
+
+            grafana:
+              image: grafana/grafana:latest
+              container_name: grafana
+              ports:
+                - "3000:3000"
+              volumes:
+                - grafana_data:/var/lib/grafana
+                - ./grafana.ini:/etc/grafana/grafana.ini
+              environment:
+                - GF_SECURITY_ADMIN_PASSWORD=admin123
+                - GF_USERS_ALLOW_SIGN_UP=false
+              restart: unless-stopped
+              networks:
+                - monitoring
+              depends_on:
+                - prometheus
+
+            node-exporter:
+              image: prom/node-exporter:latest
+              container_name: node-exporter
+              ports:
+                - "9100:9100"
+              volumes:
+                - /proc:/host/proc:ro
+                - /sys:/host/sys:ro
+                - /:/rootfs:ro
+              command:
+                - '--path.procfs=/host/proc'
+                - '--path.rootfs=/rootfs'
+                - '--path.sysfs=/host/sys'
+                - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+              restart: unless-stopped
+              networks:
+                - monitoring
+
+          volumes:
+            prometheus_data:
+            grafana_data:
+
+          networks:
+            monitoring:
+              driver: bridge
+        dest: /opt/monitoring/docker-compose.yml
+        mode: '0644'
+
+    - name: Criar arquivo de configuração do Prometheus
+      copy:
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+
+            - job_name: 'node-exporter'
+              static_configs:
+                - targets: ['node-exporter:9100']
+
+            - job_name: 'grafana'
+              static_configs:
+                - targets: ['grafana:3000']
+        dest: /opt/monitoring/prometheus.yml
+        mode: '0644'
+
+    - name: Criar arquivo de configuração do Grafana
+      copy:
+        content: |
+          [server]
+          http_port = 3000
+          domain = localhost
+
+          [security]
+          admin_user = admin
+          admin_password = admin123
+
+          [users]
+          allow_sign_up = false
+          allow_org_create = false
+
+          [auth.anonymous]
+          enabled = false
+
+          [dashboards]
+          default_home_dashboard_path = /var/lib/grafana/dashboards/node-exporter.json
+        dest: /opt/monitoring/grafana.ini
+        mode: '0644'
+
+    - name: Iniciar containers com Docker Compose
+      shell: |
+        cd /opt/monitoring
+        docker-compose up -d
+      register: docker_compose_result
+
+    - name: Aguardar containers iniciarem
+      wait_for:
+        port: "{{ item }}"
+        host: localhost
+        delay: 10
+        timeout: 60
+      loop:
+        - 3000
+        - 9090
+        - 9100
+
+    - name: Verificar status dos containers
+      shell: docker ps
+      register: container_status
+
+    - name: Exibir status dos containers
+      debug:
+        msg: "{{ container_status.stdout_lines }}"
+
+    - name: Exibir URLs de acesso
+      debug:
+        msg: |
+          Serviços configurados com sucesso!
+          Grafana: http://{{ ansible_default_ipv4.address }}:3000 (admin/admin123)
+          Prometheus: http://{{ ansible_default_ipv4.address }}:9090
+          Node Exporter: http://{{ ansible_default_ipv4.address }}:9100
