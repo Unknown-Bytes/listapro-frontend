@@ -13,6 +13,51 @@ provider "digitalocean" {
   token = var.do_token
 }
 
+resource "digitalocean_droplet" "monitoring_server" {
+  image    =  "ubuntu-22-04-x64"
+  name     =  "monitoring-server"
+  region   =  var.region
+  size     =  "s-1vcpu-1gb"
+  ssh_keys =  [data.digitalocean_ssh_key.monitoring_key.id]
+}
+
+output "droplet_ip" {
+  value = digitalocean_droplet.monitoring_server.ipv4_address
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Variáveis
 variable "do_token" {
   description = "Token da Digital Ocean"
