@@ -61,11 +61,23 @@ import_resource \
     "projects/${PROJECT_ID}/global/addresses/listapro-prod-ip" \
     "IP Global"
 
-# Tentar importar Artifact Registry (se existir)
+# Tentar importar VPC
+import_resource \
+    "google_compute_network.listapro_prod_vpc" \
+    "projects/${PROJECT_ID}/global/networks/listapro-prod-vpc" \
+    "VPC Network"
+
+# Tentar importar Artifact Registry
 import_resource \
     "google_artifact_registry_repository.listapro_prod_repo" \
     "projects/${PROJECT_ID}/locations/us-central1/repositories/listapro-prod-repo" \
     "Artifact Registry"
+
+# Tentar importar Cloud SQL
+import_resource \
+    "google_sql_database_instance.listapro_prod_db" \
+    "projects/${PROJECT_ID}/instances/listapro-prod-db" \
+    "Cloud SQL Instance"
 
 echo ""
 echo -e "${GREEN}🎉 Processo de importação concluído!${NC}"

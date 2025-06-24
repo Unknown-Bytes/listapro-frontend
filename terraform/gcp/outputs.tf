@@ -32,18 +32,18 @@ output "region" {
 
 output "artifact_registry_url" {
   description = "Artifact Registry URL"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.listapro_prod_repo.repository_id}"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${data.google_artifact_registry_repository.existing_listapro_prod_repo.repository_id}"
 }
 
 output "database_connection_string" {
   description = "Database connection string"
-  value       = "postgresql://${google_sql_user.listapro_prod_user.name}:${google_sql_user.listapro_prod_user.password}@${google_sql_database_instance.listapro_prod_db.public_ip_address}:5432/${google_sql_database.listapro_prod_database.name}"
+  value       = "postgresql://${google_sql_user.listapro_prod_user.name}:${google_sql_user.listapro_prod_user.password}@${data.google_sql_database_instance.existing_listapro_prod_db.public_ip_address}:5432/${google_sql_database.listapro_prod_database.name}"
   sensitive   = true
 }
 
 output "database_host" {
   description = "Database host"
-  value       = google_sql_database_instance.listapro_prod_db.public_ip_address
+  value       = data.google_sql_database_instance.existing_listapro_prod_db.public_ip_address
   sensitive   = true
 }
 
@@ -71,7 +71,7 @@ output "external_ip" {
 
 output "vpc_name" {
   description = "VPC network name"
-  value       = google_compute_network.listapro_prod_vpc.name
+  value       = data.google_compute_network.existing_listapro_prod_vpc.name
 }
 
 output "subnet_name" {

@@ -32,20 +32,20 @@ resource "google_project_service" "sql_api" {
   service = "sql-component.googleapis.com"
 }
 
-# VPC Network
-resource "google_compute_network" "listapro_prod_vpc" {
-  name                    = "listapro-prod-vpc"
-  auto_create_subnetworks = false
-
-  depends_on = [google_project_service.compute_api]
-}
+# VPC Network (comentado - usando data source)
+# resource "google_compute_network" "listapro_prod_vpc" {
+#   name                    = "listapro-prod-vpc"
+#   auto_create_subnetworks = false
+# 
+#   depends_on = [google_project_service.compute_api]
+# }
 
 # Subnet
 resource "google_compute_subnetwork" "listapro_prod_subnet" {
   name          = "listapro-prod-subnet"
   ip_cidr_range = "10.0.0.0/16"
   region        = var.region
-  network       = google_compute_network.listapro_prod_vpc.name
+  network       = data.google_compute_network.existing_listapro_prod_vpc.name
 
   secondary_ip_range {
     range_name    = "pods"
@@ -69,7 +69,7 @@ resource "google_container_cluster" "listapro_prod" {
   remove_default_node_pool = true
   initial_node_count       = 1
 
-  network    = google_compute_network.listapro_prod_vpc.name
+  network    = data.google_compute_network.existing_listapro_prod_vpc.name
   subnetwork = google_compute_subnetwork.listapro_prod_subnet.name
 
   ip_allocation_policy {
@@ -144,71 +144,71 @@ resource "google_container_node_pool" "listapro_prod_nodes" {
 #   }
 # }
 
-# Artifact Registry
-resource "google_artifact_registry_repository" "listapro_prod_repo" {
-  location      = var.region
-  repository_id = "listapro-prod-repo"
-  description   = "Container repository for ListaPro Production"
-  format        = "DOCKER"
+# Artifact Registry (comentado - usando data source)
+# resource "google_artifact_registry_repository" "listapro_prod_repo" {
+#   location      = var.region
+#   repository_id = "listapro-prod-repo"
+#   description   = "Container repository for ListaPro Production"
+#   format        = "DOCKER"
+# 
+#   depends_on = [google_project_service.artifactregistry_api]
+# }
 
-  depends_on = [google_project_service.artifactregistry_api]
-}
-
-# Cloud SQL Instance
-resource "google_sql_database_instance" "listapro_prod_db" {
-  name             = "listapro-prod-db"
-  database_version = "POSTGRES_15"
-  region           = var.region
-  deletion_protection = false
-
-  settings {
-    tier = var.db_tier
-
-    backup_configuration {
-      enabled                        = true
-      start_time                     = "04:00"
-      point_in_time_recovery_enabled = true
-    }
-
-    maintenance_window {
-      day  = 7
-      hour = 4
-    }
-
-    ip_configuration {
-      ipv4_enabled = true
-      
-      authorized_networks {
-        value = "0.0.0.0/0"
-        name  = "all"
-      }
-    }
-
-    disk_autoresize = true
-    disk_size       = 20
-    disk_type       = "PD_SSD"
-  }
-
-  depends_on = [google_project_service.sql_api]
-}
+# Cloud SQL Instance (comentado - usando data source)
+# resource "google_sql_database_instance" "listapro_prod_db" {
+#   name             = "listapro-prod-db"
+#   database_version = "POSTGRES_15"
+#   region           = var.region
+#   deletion_protection = false
+# 
+#   settings {
+#     tier = var.db_tier
+# 
+#     backup_configuration {
+#       enabled                        = true
+#       start_time                     = "04:00"
+#       point_in_time_recovery_enabled = true
+#     }
+# 
+#     maintenance_window {
+#       day  = 7
+#       hour = 4
+#     }
+# 
+#     ip_configuration {
+#       ipv4_enabled = true
+#       
+#       authorized_networks {
+#         value = "0.0.0.0/0"
+#         name  = "all"
+#       }
+#     }
+# 
+#     disk_autoresize = true
+#     disk_size       = 20
+#     disk_type       = "PD_SSD"
+#   }
+# 
+#   depends_on = [google_project_service.sql_api]
+# }
 
 # Database
 resource "google_sql_database" "listapro_prod_database" {
   name     = "listapro"
-  instance = google_sql_database_instance.listapro_prod_db.name
+  instance = data.google_sql_database_instance.existing_listapro_prod_db.name
 }
 
 # Database User
 resource "google_sql_user" "listapro_prod_user" {
   name     = "listapro"
-  instance = google_sql_database_instance.listapro_prod_db.name
+  instance = data.google_sql_database_instance.existing_listapro_prod_db.name
   password = var.db_password
 }
 
 # Firewall rules
 resource "google_compute_firewall" "listapro_prod_firewall" {
   name    = "listapro-prod-firewall"
-  network = google_compute_network.listapro_prod_vpc.name
+  network = data.google_compute_network.existing_listapro_prod_vpc.name
 
   allow {
     protocol = "tcp"
