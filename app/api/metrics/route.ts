@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 // Simulação de métricas para Prometheus
 let requestCount = 0;
-let startTime = Date.now();
+const startTime = Date.now();
 
 export async function GET() {
   requestCount++;
