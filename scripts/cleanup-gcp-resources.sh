@@ -77,27 +77,42 @@ remove_resource() {
 
 # Remover recursos em ordem de dependência (bottom-up)
 
-# 1. Cloud SQL Instance (demora mais)
+# 1. Database (antes da instância SQL)
+remove_resource \
+    "gcloud sql databases delete listapro --instance=listapro-prod-db --project=$PROJECT_ID --quiet" \
+    "Database"
+
+# 2. Cloud SQL Instance (demora mais)
 remove_resource \
     "gcloud sql instances delete listapro-prod-db --project=$PROJECT_ID --quiet" \
     "Cloud SQL Instance"
 
-# 2. Artifact Registry
+# 3. Firewall Rules
+remove_resource \
+    "gcloud compute firewall-rules delete listapro-prod-firewall --project=$PROJECT_ID --quiet" \
+    "Firewall Rules"
+
+# 4. Subnet (antes do VPC)
+remove_resource \
+    "gcloud compute networks subnets delete listapro-prod-subnet --region=us-central1 --project=$PROJECT_ID --quiet" \
+    "Subnet"
+
+# 5. Artifact Registry
 remove_resource \
     "gcloud artifacts repositories delete listapro-prod-repo --location=us-central1 --project=$PROJECT_ID --quiet" \
     "Artifact Registry"
 
-# 3. Service Account
+# 6. Service Account
 remove_resource \
     "gcloud iam service-accounts delete listapro-prod-k8s-sa@${PROJECT_ID}.iam.gserviceaccount.com --project=$PROJECT_ID --quiet" \
     "Service Account"
 
-# 4. IP Global
+# 7. IP Global
 remove_resource \
     "gcloud compute addresses delete listapro-prod-ip --global --project=$PROJECT_ID --quiet" \
     "IP Global"
 
-# 5. VPC Network (por último, pois outros recursos podem depender dele)
+# 8. VPC Network (por último, pois outros recursos podem depender dele)
 remove_resource \
     "gcloud compute networks delete listapro-prod-vpc --project=$PROJECT_ID --quiet" \
     "VPC Network"

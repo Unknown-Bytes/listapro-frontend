@@ -114,10 +114,51 @@ export DB_PASSWORD="senha_do_banco"
 ./scripts/deployment/deploy-stage.sh
 ```
 
-#### Production (GCP)
+#### Production (GCP) - 3 Opções
+
+**Opção 1: Script Inteligente (Recomendado) 🤖**
+```bash
+# Detecta automaticamente recursos existentes no GCP
+./scripts/smart-deploy-gcp.sh
+```
+
+**Opção 2: Script Manual**
 ```bash
 ./scripts/deployment/deploy-production.sh
 ```
+
+**Opção 3: Deploy Direto com Terraform**
+```bash
+cd terraform/gcp
+terraform plan
+terraform apply
+```
+
+### 🛠️ Scripts Auxiliares
+
+#### Para Resolver Recursos Existentes no GCP:
+```bash
+# 1. Script inteligente (detecta tudo automaticamente)
+./scripts/smart-deploy-gcp.sh
+
+# 2. Importar recursos existentes para o Terraform
+./scripts/import-gcp-resources.sh
+
+# 3. Limpar recursos existentes (⚠️ CUIDADO!)
+./scripts/cleanup-gcp-resources.sh
+```
+
+#### Para Validação do Projeto:
+```bash
+# Verificar se todos os critérios foram atendidos
+./scripts/validate-project.sh
+```
+
+### 📋 Troubleshooting
+
+Se você encontrar erros de recursos já existentes no GCP, consulte:
+- `TROUBLESHOOTING.md` - Soluções detalhadas
+- Execute `./scripts/smart-deploy-gcp.sh` - Resolve automaticamente
 
 ### Deploy via GitHub Actions
 

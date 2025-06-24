@@ -40,23 +40,23 @@ resource "google_project_service" "sql_api" {
 #   depends_on = [google_project_service.compute_api]
 # }
 
-# Subnet
-resource "google_compute_subnetwork" "listapro_prod_subnet" {
-  name          = "listapro-prod-subnet"
-  ip_cidr_range = "10.0.0.0/16"
-  region        = var.region
-  network       = data.google_compute_network.existing_listapro_prod_vpc.name
-
-  secondary_ip_range {
-    range_name    = "pods"
-    ip_cidr_range = "10.1.0.0/16"
-  }
-
-  secondary_ip_range {
-    range_name    = "services"
-    ip_cidr_range = "10.2.0.0/16"
-  }
-}
+# Subnet (comentado - usando data source)
+# resource "google_compute_subnetwork" "listapro_prod_subnet" {
+#   name          = "listapro-prod-subnet"
+#   ip_cidr_range = "10.0.0.0/16"
+#   region        = var.region
+#   network       = data.google_compute_network.existing_listapro_prod_vpc.name
+# 
+#   secondary_ip_range {
+#     range_name    = "pods"
+#     ip_cidr_range = "10.1.0.0/16"
+#   }
+# 
+#   secondary_ip_range {
+#     range_name    = "services"
+#     ip_cidr_range = "10.2.0.0/16"
+#   }
+# }
 
 # GKE Cluster
 resource "google_container_cluster" "listapro_prod" {
@@ -70,7 +70,7 @@ resource "google_container_cluster" "listapro_prod" {
   initial_node_count       = 1
 
   network    = data.google_compute_network.existing_listapro_prod_vpc.name
-  subnetwork = google_compute_subnetwork.listapro_prod_subnet.name
+  subnetwork = data.google_compute_subnetwork.existing_listapro_prod_subnet.name
 
   ip_allocation_policy {
     cluster_secondary_range_name  = "pods"
@@ -192,11 +192,11 @@ resource "google_container_node_pool" "listapro_prod_nodes" {
 #   depends_on = [google_project_service.sql_api]
 # }
 
-# Database
-resource "google_sql_database" "listapro_prod_database" {
-  name     = "listapro"
-  instance = data.google_sql_database_instance.existing_listapro_prod_db.name
-}
+# Database (comentado - usando data source)
+# resource "google_sql_database" "listapro_prod_database" {
+#   name     = "listapro"
+#   instance = data.google_sql_database_instance.existing_listapro_prod_db.name
+# }
 
 # Database User
 resource "google_sql_user" "listapro_prod_user" {
@@ -205,19 +205,19 @@ resource "google_sql_user" "listapro_prod_user" {
   password = var.db_password
 }
 
-# Firewall rules
-resource "google_compute_firewall" "listapro_prod_firewall" {
-  name    = "listapro-prod-firewall"
-  network = data.google_compute_network.existing_listapro_prod_vpc.name
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80", "443", "3000", "3001", "9090"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["listapro", "production"]
-}
+# Firewall rules (comentado - usando data source)
+# resource "google_compute_firewall" "listapro_prod_firewall" {
+#   name    = "listapro-prod-firewall"
+#   network = data.google_compute_network.existing_listapro_prod_vpc.name
+# 
+#   allow {
+#     protocol = "tcp"
+#     ports    = ["80", "443", "3000", "3001", "9090"]
+#   }
+# 
+#   source_ranges = ["0.0.0.0/0"]
+#   target_tags   = ["listapro", "production"]
+# }
 
 # External IP for Load Balancer (comentado - usando data source)
 # resource "google_compute_global_address" "listapro_prod_ip" {

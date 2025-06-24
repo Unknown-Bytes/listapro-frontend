@@ -79,6 +79,24 @@ import_resource \
     "projects/${PROJECT_ID}/instances/listapro-prod-db" \
     "Cloud SQL Instance"
 
+# Tentar importar Subnet
+import_resource \
+    "google_compute_subnetwork.listapro_prod_subnet" \
+    "projects/${PROJECT_ID}/regions/us-central1/subnetworks/listapro-prod-subnet" \
+    "Subnet"
+
+# Tentar importar Database
+import_resource \
+    "google_sql_database.listapro_prod_database" \
+    "projects/${PROJECT_ID}/instances/listapro-prod-db/databases/listapro" \
+    "Database"
+
+# Tentar importar Firewall
+import_resource \
+    "google_compute_firewall.listapro_prod_firewall" \
+    "projects/${PROJECT_ID}/global/firewalls/listapro-prod-firewall" \
+    "Firewall Rules"
+
 echo ""
 echo -e "${GREEN}🎉 Processo de importação concluído!${NC}"
 echo -e "${BLUE}💡 Agora você pode executar 'terraform plan' para ver as mudanças pendentes.${NC}"

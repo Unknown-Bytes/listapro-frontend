@@ -37,7 +37,7 @@ output "artifact_registry_url" {
 
 output "database_connection_string" {
   description = "Database connection string"
-  value       = "postgresql://${google_sql_user.listapro_prod_user.name}:${google_sql_user.listapro_prod_user.password}@${data.google_sql_database_instance.existing_listapro_prod_db.public_ip_address}:5432/${google_sql_database.listapro_prod_database.name}"
+  value       = "postgresql://${google_sql_user.listapro_prod_user.name}:${google_sql_user.listapro_prod_user.password}@${data.google_sql_database_instance.existing_listapro_prod_db.public_ip_address}:5432/${data.google_sql_database.existing_listapro_prod_database.name}"
   sensitive   = true
 }
 
@@ -49,7 +49,7 @@ output "database_host" {
 
 output "database_name" {
   description = "Database name"
-  value       = google_sql_database.listapro_prod_database.name
+  value       = data.google_sql_database.existing_listapro_prod_database.name
 }
 
 output "database_user" {

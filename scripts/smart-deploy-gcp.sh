@@ -72,6 +72,24 @@ check_resource_exists() {
                 return 0
             fi
             ;;
+        "compute-subnetwork")
+            if gcloud compute networks subnets describe $resource_name --region=us-central1 --project=$PROJECT_ID &>/dev/null; then
+                echo -e "${YELLOW}⚠️  ${resource_description} já existe: ${resource_name}${NC}"
+                return 0
+            fi
+            ;;
+        "sql-database")
+            if gcloud sql databases describe $resource_name --instance=listapro-prod-db --project=$PROJECT_ID &>/dev/null; then
+                echo -e "${YELLOW}⚠️  ${resource_description} já existe: ${resource_name}${NC}"
+                return 0
+            fi
+            ;;
+        "compute-firewall")
+            if gcloud compute firewall-rules describe $resource_name --project=$PROJECT_ID &>/dev/null; then
+                echo -e "${YELLOW}⚠️  ${resource_description} já existe: ${resource_name}${NC}"
+                return 0
+            fi
+            ;;
     esac
     
     echo -e "${GREEN}✅ ${resource_description} não existe, será criado: ${resource_name}${NC}"
@@ -102,6 +120,18 @@ fi
 
 if check_resource_exists "sql-instance" "listapro-prod-db" "Cloud SQL Instance"; then
     EXISTING_RESOURCES+=("sql-instance")
+fi
+
+if check_resource_exists "compute-subnetwork" "listapro-prod-subnet" "Subnet"; then
+    EXISTING_RESOURCES+=("compute-subnetwork")
+fi
+
+if check_resource_exists "sql-database" "listapro" "Database"; then
+    EXISTING_RESOURCES+=("sql-database")
+fi
+
+if check_resource_exists "compute-firewall" "listapro-prod-firewall" "Firewall Rules"; then
+    EXISTING_RESOURCES+=("compute-firewall")
 fi
 
 # Se há recursos existentes, usar data sources

@@ -18,6 +18,19 @@ data "google_compute_network" "existing_listapro_prod_vpc" {
   project = var.project_id
 }
 
+# Se a Subnet já existe, use um data source
+data "google_compute_subnetwork" "existing_listapro_prod_subnet" {
+  name    = "listapro-prod-subnet"
+  region  = var.region
+  project = var.project_id
+}
+
+# Se o Firewall já existe, use um data source
+data "google_compute_firewall" "existing_listapro_prod_firewall" {
+  name    = "listapro-prod-firewall"
+  project = var.project_id
+}
+
 # Se o Artifact Registry já existe, use um data source
 data "google_artifact_registry_repository" "existing_listapro_prod_repo" {
   location      = var.region
@@ -29,6 +42,13 @@ data "google_artifact_registry_repository" "existing_listapro_prod_repo" {
 data "google_sql_database_instance" "existing_listapro_prod_db" {
   name    = "listapro-prod-db"
   project = var.project_id
+}
+
+# Se o database já existe, use um data source
+data "google_sql_database" "existing_listapro_prod_database" {
+  name     = "listapro"
+  instance = data.google_sql_database_instance.existing_listapro_prod_db.name
+  project  = var.project_id
 }
 
 # Outputs usando os recursos existentes
@@ -47,6 +67,11 @@ output "existing_vpc_name" {
   value       = data.google_compute_network.existing_listapro_prod_vpc.name
 }
 
+output "existing_subnet_name" {
+  description = "Existing subnet name"
+  value       = data.google_compute_subnetwork.existing_listapro_prod_subnet.name
+}
+
 output "existing_registry_url" {
   description = "Existing Artifact Registry URL"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${data.google_artifact_registry_repository.existing_listapro_prod_repo.repository_id}"
@@ -55,4 +80,9 @@ output "existing_registry_url" {
 output "existing_db_connection_name" {
   description = "Existing Cloud SQL connection name"
   value       = data.google_sql_database_instance.existing_listapro_prod_db.connection_name
+}
+
+output "existing_database_name" {
+  description = "Existing database name"
+  value       = data.google_sql_database.existing_listapro_prod_database.name
 }
