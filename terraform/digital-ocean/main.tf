@@ -17,8 +17,6 @@ resource "digitalocean_vpc" "listapro_stage_vpc" {
   name     = "listapro-stage-vpc"
   region   = var.region
   ip_range = "10.10.0.0/16"
-
-  tags = ["listapro", "stage", "vpc"]
 }
 
 # Cluster Kubernetes
@@ -49,8 +47,6 @@ resource "digitalocean_container_registry" "listapro_stage_registry" {
   name                   = "listapro-stage-registry"
   subscription_tier_slug = "basic"
   region                 = var.region
-
-  tags = ["listapro", "stage", "registry"]
 }
 
 # Firewall para segurança
@@ -138,8 +134,6 @@ resource "digitalocean_loadbalancer" "listapro_stage_lb" {
     port     = 3000
     path     = "/"
   }
-
-  tags = ["listapro", "stage", "loadbalancer"]
 }
 
 # Database (PostgreSQL)

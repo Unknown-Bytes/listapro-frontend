@@ -113,7 +113,7 @@ resource "google_container_node_pool" "listapro_prod_nodes" {
     machine_type = var.machine_type
 
     # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
-    service_account = google_service_account.kubernetes.email
+    service_account = data.google_service_account.existing_kubernetes.email
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
@@ -132,11 +132,17 @@ resource "google_container_node_pool" "listapro_prod_nodes" {
   }
 }
 
-# Service Account for Kubernetes
-resource "google_service_account" "kubernetes" {
-  account_id   = "listapro-prod-k8s-sa"
-  display_name = "Kubernetes Service Account for ListaPro Production"
-}
+# Service Account for Kubernetes (comentado - usando data source)
+# resource "google_service_account" "kubernetes" {
+#   account_id   = "listapro-prod-k8s-sa"
+#   display_name = "Kubernetes Service Account for ListaPro Production"
+#   
+#   lifecycle {
+#     ignore_changes = [
+#       account_id,
+#     ]
+#   }
+# }
 
 # Artifact Registry
 resource "google_artifact_registry_repository" "listapro_prod_repo" {
@@ -213,7 +219,13 @@ resource "google_compute_firewall" "listapro_prod_firewall" {
   target_tags   = ["listapro", "production"]
 }
 
-# External IP for Load Balancer
-resource "google_compute_global_address" "listapro_prod_ip" {
-  name = "listapro-prod-ip"
-}
+# External IP for Load Balancer (comentado - usando data source)
+# resource "google_compute_global_address" "listapro_prod_ip" {
+#   name = "listapro-prod-ip"
+#   
+#   lifecycle {
+#     ignore_changes = [
+#       name,
+#     ]
+#   }
+# }

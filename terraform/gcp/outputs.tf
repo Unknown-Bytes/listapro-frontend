@@ -66,7 +66,7 @@ output "database_password" {
 
 output "external_ip" {
   description = "External IP address"
-  value       = google_compute_global_address.listapro_prod_ip.address
+  value       = data.google_compute_global_address.existing_listapro_prod_ip.address
 }
 
 output "vpc_name" {

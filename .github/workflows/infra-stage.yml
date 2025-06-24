@@ -1,0 +1,131 @@
+name: Deploy Infrastructure - Stage (Digital Ocean)
+
+on:
+  push:
+    branches: [ develop, stage ]
+    paths:
+      - 'terraform/digital-ocean/**'
+      - 'K8s/stage/**'
+      - 'helm/**'
+  workflow_dispatch:
+
+env:
+  DO_TOKEN: ${{ secrets.DO_TOKEN }}
+  TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Terraform Init
+      working-directory: ./terraform/digital-ocean
+      run: terraform init
+
+    - name: Terraform Plan
+      working-directory: ./terraform/digital-ocean
+      run: terraform plan -out=tfplan
+
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: terraform-plan-stage-infra
+        path: terraform/digital-ocean/tfplan
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/stage'
+    environment: stage-infrastructure
+    outputs:
+      cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
+      registry-name: ${{ steps.terraform-output.outputs.registry-name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: terraform-plan-stage-infra
+        path: terraform/digital-ocean/
+
+    - name: Terraform Init
+      working-directory: ./terraform/digital-ocean
+      run: terraform init
+
+    - name: Terraform Apply
+      working-directory: ./terraform/digital-ocean
+      run: terraform apply -auto-approve tfplan
+
+    - name: Get Terraform Outputs
+      id: terraform-output
+      working-directory: ./terraform/digital-ocean
+      run: |
+        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+        echo "registry-name=$(terraform output -raw registry_name)" >> $GITHUB_OUTPUT
+        echo "cluster-endpoint=$(terraform output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+
+  setup-kubernetes:
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DO_TOKEN }}
+
+    - name: Save DigitalOcean kubeconfig
+      run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ needs.terraform-apply.outputs.cluster-name }}
+
+    - name: Create Namespaces
+      run: |
+        kubectl apply -f K8s/stage/namespace-stage.yaml
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Deploy Monitoring Stack
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+        
+        helm upgrade --install monitoring-stage ./helm/monitoring \
+          --namespace monitoring-stage \
+          --create-namespace \
+          --values ./helm/monitoring/values-stage.yaml \
+          --wait
+
+    - name: Verify Infrastructure
+      run: |
+        echo "=== Cluster Status ==="
+        kubectl get nodes
+        kubectl get namespaces
+        
+        echo "=== Monitoring Status ==="
+        kubectl get pods -n monitoring-stage
+        kubectl get services -n monitoring-stage
+        
+        echo "🎉 Stage Infrastructure deployed successfully!"

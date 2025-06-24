@@ -4,12 +4,16 @@
 
 ### Critério 1: Atividades Semanais
 - [x] 1.1 Infraestrutura Terraform criada para Digital Ocean e GCP
-- [x] 1.2 Pipelines CI/CD implementadas (deploy-stage.yml e deploy-production.yml)
+- [x] 1.2 **4 Pipelines CI/CD implementadas**:
+  - [x] `infra-stage.yml` - Infraestrutura Stage (Digital Ocean)
+  - [x] `app-stage.yml` - Aplicação Stage (Digital Ocean) 
+  - [x] `infra-production.yml` - Infraestrutura Production (GCP)
+  - [x] `app-production.yml` - Aplicação Production (GCP)
 - [x] 1.3 Monitoramento com Prometheus e Grafana via Helm
 
 ### Critério 2: Automação
-- [x] 2.1 Pipeline de criação ambiente de homologação (Digital Ocean)
-- [x] 2.2 Pipeline de atualização ambiente de produção (GCP)
+- [x] 2.1 Pipeline de criação ambiente de homologação (`infra-stage.yml` + `app-stage.yml`)
+- [x] 2.2 Pipeline de atualização ambiente de produção (`infra-production.yml` + `app-production.yml`)
 
 ### Critério 3: Deploy na Nuvem
 - [x] 3.1 Diagrama da infraestrutura disponível em DOCS.md
@@ -24,7 +28,9 @@
 ## 🚀 Como Validar
 
 1. **Infraestrutura**: Verifique os diretórios `terraform/digital-ocean` e `terraform/gcp`.
-2. **Pipelines**: Veja `.github/workflows/deploy-stage.yml` e `.github/workflows/deploy-production.yml`.
+2. **Pipelines**: Veja `.github/workflows/` - agora são **4 pipelines distintas**:
+   - `infra-stage.yml` e `app-stage.yml` para Digital Ocean
+   - `infra-production.yml` e `app-production.yml` para GCP
 3. **Monitoramento**: Confira `helm/monitoring` e dashboards no Grafana.
 4. **Endpoints de Saúde**: Teste `/api/health`, `/api/ready` e `/api/metrics`.
 5. **CRUD**: Acesse a aplicação, crie/edite/exclua itens.
