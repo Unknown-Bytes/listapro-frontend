@@ -1,13 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nextjs-frontend
-  namespace: production
+  name: listapro-frontend-prod
+  namespace: listapro-prod
+  labels:
+    app: listapro-frontend-prod
+    environment: production
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
-      app: nextjs-frontend
+      app: listapro-frontend-prod
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,7 +19,12 @@ spec:
   template:
     metadata:
       labels:
-        app: nextjs-frontend
+        app: listapro-frontend-prod
+        environment: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/api/metrics"
     spec:
       containers:
         - name: listapro-frontend
@@ -24,6 +32,27 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+              name: http
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: listapro-prod-secret
+                  key: database-url
+          envFrom:
+            - configMapRef:
+                name: frontend-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
           readinessProbe:
             httpGet:
               path: /
@@ -36,12 +65,6 @@ spec:
               port: 80
             initialDelaySeconds: 30
             periodSeconds: 10
-          envFrom:
-            - configMapRef:
-                name: frontend-config
-          resources:
-            requests:
-              memory: "128Mi"
               cpu: "100m"
             limits:
               memory: "256Mi"

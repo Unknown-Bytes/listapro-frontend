@@ -1,13 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nextjs-frontend
-  namespace: stage
+  name: listapro-frontend-stage
+  namespace: listapro-stage
+  labels:
+    app: listapro-frontend-stage
+    environment: stage
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: nextjs-frontend
+      app: listapro-frontend-stage
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,7 +19,12 @@ spec:
   template:
     metadata:
       labels:
-        app: nextjs-frontend
+        app: listapro-frontend-stage
+        environment: stage
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/api/metrics"
     spec:
       containers:
         - name: listapro-frontend
@@ -24,6 +32,27 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+              name: http
+          env:
+            - name: ENVIRONMENT
+              value: "stage"
+            - name: NODE_ENV
+              value: "staging"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: listapro-stage-secret
+                  key: database-url
+          envFrom:
+            - configMapRef:
+                name: frontend-config
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
           readinessProbe:
             httpGet:
               path: /
@@ -36,13 +65,3 @@ spec:
               port: 80
             initialDelaySeconds: 30
             periodSeconds: 10
-          envFrom:
-            - configMapRef:
-                name: frontend-config
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "250m"

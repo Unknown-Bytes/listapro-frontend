@@ -1,13 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nextjs-frontend
-  namespace: stage
+  name: listapro-frontend-stage-service
+  namespace: listapro-stage
+  labels:
+    app: listapro-frontend-stage
+    environment: stage
 spec:
   type: LoadBalancer
   selector:
-    app: nextjs-frontend
+    app: listapro-frontend-stage
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+      name: http

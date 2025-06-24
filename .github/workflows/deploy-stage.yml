@@ -1,0 +1,197 @@
+name: Deploy to Stage (Digital Ocean)
+
+on:
+  push:
+    branches: [ develop, stage ]
+  pull_request:
+    branches: [ develop, stage ]
+  workflow_dispatch:
+
+env:
+  DO_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+  TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+  DOCKER_REGISTRY: registry.digitalocean.com/listapro-stage-registry
+  IMAGE_NAME: listapro-frontend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+
+    - name: Run linting
+      run: npm run lint
+
+  terraform-plan:
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Terraform Init
+      working-directory: ./terraform/digital-ocean
+      run: terraform init
+
+    - name: Terraform Plan
+      working-directory: ./terraform/digital-ocean
+      run: terraform plan -out=tfplan
+
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: terraform-plan-stage
+        path: terraform/digital-ocean/tfplan
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/stage'
+    environment: stage
+    outputs:
+      cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
+      registry-name: ${{ steps.terraform-output.outputs.registry-name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: terraform-plan-stage
+        path: terraform/digital-ocean/
+
+    - name: Terraform Init
+      working-directory: ./terraform/digital-ocean
+      run: terraform init
+
+    - name: Terraform Apply
+      working-directory: ./terraform/digital-ocean
+      run: terraform apply -auto-approve tfplan
+
+    - name: Get Terraform Outputs
+      id: terraform-output
+      working-directory: ./terraform/digital-ocean
+      run: |
+        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+        echo "registry-name=$(terraform output -raw registry_name)" >> $GITHUB_OUTPUT
+        echo "cluster-endpoint=$(terraform output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/stage'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+    - name: Log in to DO Container Registry
+      run: doctl registry login --expiry-seconds 1200
+
+    - name: Build Docker image
+      run: |
+        docker build -t $DOCKER_REGISTRY/$IMAGE_NAME:stage-${{ github.sha }} .
+        docker tag $DOCKER_REGISTRY/$IMAGE_NAME:stage-${{ github.sha }} $DOCKER_REGISTRY/$IMAGE_NAME:stage
+
+    - name: Push to registry
+      run: |
+        docker push $DOCKER_REGISTRY/$IMAGE_NAME:stage-${{ github.sha }}
+        docker push $DOCKER_REGISTRY/$IMAGE_NAME:stage
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [terraform-apply, build-and-push]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/stage'
+    environment: stage
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+    - name: Save DigitalOcean kubeconfig
+      run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ needs.terraform-apply.outputs.cluster-name }}
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Update image in deployment
+      run: |
+        sed -i 's|image: brunovn7/listapro-frontend:stage|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:stage-${{ github.sha }}|g' K8s/stage/frontend/frontend-stage-deployment.yml
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f K8s/stage/namespace-stage.yaml
+        kubectl apply -f K8s/stage/ -R
+
+    - name: Deploy Monitoring Stack
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+        
+        helm upgrade --install monitoring-stage ./helm/monitoring \
+          --namespace monitoring-stage \
+          --create-namespace \
+          --values ./helm/monitoring/values-stage.yaml \
+          --wait
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/listapro-frontend-stage -n listapro-stage
+        kubectl get pods -n listapro-stage
+        kubectl get services -n listapro-stage
+
+    - name: Wait for Load Balancer
+      run: |
+        echo "Waiting for load balancer to be ready..."
+        kubectl wait --for=condition=ready pod -l app=listapro-frontend-stage -n listapro-stage --timeout=300s
+
+    - name: Get deployment info
+      run: |
+        echo "=== Application URLs ==="
+        LB_IP=$(kubectl get service listapro-frontend-stage-service -n listapro-stage -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Application: http://$LB_IP"
+        
+        echo "=== Monitoring URLs ==="
+        GRAFANA_IP=$(kubectl get service monitoring-stage-grafana -n monitoring-stage -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        PROMETHEUS_IP=$(kubectl get service monitoring-stage-prometheus-server -n monitoring-stage -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Grafana: http://$GRAFANA_IP:3001"
+        echo "Prometheus: http://$PROMETHEUS_IP:9090"

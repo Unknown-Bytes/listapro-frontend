@@ -1,0 +1,16 @@
+# Values for Production environment (GCP)
+environment: "production"
+
+grafana:
+  adminPassword: "admin123"
+  service:
+    type: LoadBalancer
+    annotations:
+      cloud.google.com/load-balancer-type: "External"
+
+prometheus:
+  server:
+    service:
+      type: LoadBalancer
+      annotations:
+        cloud.google.com/load-balancer-type: "External"

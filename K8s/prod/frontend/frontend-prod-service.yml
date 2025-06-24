@@ -1,13 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nextjs-frontend
-  namespace: production
+  name: listapro-frontend-prod-service
+  namespace: listapro-prod
+  labels:
+    app: listapro-frontend-prod
+    environment: production
 spec:
   type: LoadBalancer
   selector:
-    app: nextjs-frontend
+    app: listapro-frontend-prod
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+      name: http

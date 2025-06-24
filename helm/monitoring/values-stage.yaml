@@ -1,0 +1,14 @@
+# Values for Stage environment (Digital Ocean)
+environment: "stage"
+
+grafana:
+  adminPassword: "admin123"
+  service:
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-name: "listapro-stage-grafana-lb"
+
+prometheus:
+  server:
+    service:
+      annotations:
+        service.beta.kubernetes.io/do-loadbalancer-name: "listapro-stage-prometheus-lb"

@@ -1,4 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: stage
+  name: listapro-stage
+  labels:
+    name: listapro-stage
+    environment: stage

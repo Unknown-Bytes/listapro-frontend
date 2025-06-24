@@ -1,0 +1,249 @@
+name: Deploy to Production (GCP)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  REPOSITORY: listapro-prod-repo
+  SERVICE: listapro-frontend
+  REGION: us-central1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Build application
+      run: npm run build
+
+  terraform-plan:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Terraform Init
+      working-directory: ./terraform/gcp
+      run: terraform init
+      env:
+        TF_VAR_gcp_credentials: ${{ secrets.GCP_CREDENTIALS }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    - name: Terraform Plan
+      working-directory: ./terraform/gcp
+      run: terraform plan -out=tfplan
+      env:
+        TF_VAR_gcp_credentials: ${{ secrets.GCP_CREDENTIALS }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: terraform-plan-prod
+        path: terraform/gcp/tfplan
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment: production
+    outputs:
+      cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
+      artifact-registry-url: ${{ steps.terraform-output.outputs.artifact-registry-url }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        terraform_wrapper: false
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: terraform-plan-prod
+        path: terraform/gcp/
+
+    - name: Terraform Init
+      working-directory: ./terraform/gcp
+      run: terraform init
+      env:
+        TF_VAR_gcp_credentials: ${{ secrets.GCP_CREDENTIALS }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    - name: Terraform Apply
+      working-directory: ./terraform/gcp
+      run: terraform apply -auto-approve tfplan
+      env:
+        TF_VAR_gcp_credentials: ${{ secrets.GCP_CREDENTIALS }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    - name: Get Terraform Outputs
+      id: terraform-output
+      working-directory: ./terraform/gcp
+      run: |
+        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+        echo "artifact-registry-url=$(terraform output -raw artifact_registry_url)" >> $GITHUB_OUTPUT
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Configure Docker to use gcloud as a credential helper
+      run: gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:prod-${{ github.sha }} .
+        docker tag $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:prod-${{ github.sha }} $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:latest
+
+    - name: Push to Artifact Registry
+      run: |
+        docker push $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:prod-${{ github.sha }}
+        docker push $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [terraform-apply, build-and-push]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials ${{ needs.terraform-apply.outputs.cluster-name }} --zone=$REGION-a --project=$PROJECT_ID
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Update image in deployment
+      run: |
+        sed -i 's|image: brunovn7/listapro-frontend:latest|image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:prod-${{ github.sha }}|g' K8s/prod/frontend/frontend-prod-deployment.yml
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f K8s/prod/namespace-prod.yaml
+        kubectl apply -f K8s/prod/ -R
+
+    - name: Deploy Monitoring Stack
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+        
+        helm upgrade --install monitoring-prod ./helm/monitoring \
+          --namespace monitoring-prod \
+          --create-namespace \
+          --values ./helm/monitoring/values-production.yaml \
+          --wait
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/listapro-frontend-prod -n listapro-prod
+        kubectl get pods -n listapro-prod
+        kubectl get services -n listapro-prod
+
+    - name: Wait for Load Balancer
+      run: |
+        echo "Waiting for load balancer to be ready..."
+        kubectl wait --for=condition=ready pod -l app=listapro-frontend-prod -n listapro-prod --timeout=300s
+
+    - name: Get deployment info
+      run: |
+        echo "=== Application URLs ==="
+        LB_IP=$(kubectl get service listapro-frontend-prod-service -n listapro-prod -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Application: http://$LB_IP"
+        
+        echo "=== Monitoring URLs ==="
+        GRAFANA_IP=$(kubectl get service monitoring-prod-grafana -n monitoring-prod -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        PROMETHEUS_IP=$(kubectl get service monitoring-prod-prometheus-server -n monitoring-prod -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Grafana: http://$GRAFANA_IP:3001"
+        echo "Prometheus: http://$PROMETHEUS_IP:9090"
+
+    - name: Run health checks
+      run: |
+        echo "Running health checks..."
+        # Wait for services to be ready
+        sleep 60
+        
+        # Check application health
+        if curl -f http://$LB_IP/api/health; then
+          echo "✅ Application health check passed"
+        else
+          echo "❌ Application health check failed"
+          exit 1
+        fi
