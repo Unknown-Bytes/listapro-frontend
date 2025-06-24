@@ -60,7 +60,7 @@ resource "google_project_service" "sql_api" {
 
 # GKE Cluster
 resource "google_container_cluster" "listapro_prod" {
-  name     = "listapro-prod-cluster"
+  name     = "listapro-prod-cluster-2"
   location = var.zone
 
   # We can't create a cluster with no node pool defined, but we want to only use
@@ -103,7 +103,7 @@ resource "google_container_cluster" "listapro_prod" {
 
 # Node Pool
 resource "google_container_node_pool" "listapro_prod_nodes" {
-  name       = "listapro-prod-nodes"
+  name       = "listapro-prod-nodes-2"
   location   = var.zone
   cluster    = google_container_cluster.listapro_prod.name
   node_count = var.node_count
