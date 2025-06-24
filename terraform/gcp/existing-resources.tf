@@ -25,11 +25,9 @@ data "google_compute_subnetwork" "existing_listapro_prod_subnet" {
   project = var.project_id
 }
 
-# Se o Firewall já existe, use um data source
-data "google_compute_firewall" "existing_listapro_prod_firewall" {
-  name    = "listapro-prod-firewall"
-  project = var.project_id
-}
+# Nota: O provider Google não suporta data source para firewall rules
+# Se o Firewall já existe, ele deve ser gerenciado como resource ou importado
+# data "google_compute_firewall" é inválido no provider hashicorp/google
 
 # Se o Artifact Registry já existe, use um data source
 data "google_artifact_registry_repository" "existing_listapro_prod_repo" {

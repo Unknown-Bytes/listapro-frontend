@@ -76,5 +76,5 @@ output "vpc_name" {
 
 output "subnet_name" {
   description = "Subnet name"
-  value       = google_compute_subnetwork.listapro_prod_subnet.name
+  value       = data.google_compute_subnetwork.existing_listapro_prod_subnet.name
 }
