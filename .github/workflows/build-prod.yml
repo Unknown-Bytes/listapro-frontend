@@ -68,15 +68,15 @@ jobs:
       - name: Configurar acesso ao GKE
         run: |
           export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
-            --zone ${{ secrets.GKE_CLUSTER_ZONE }} \
+          gcloud container clusters get-credentials listapro-cluster \
+            --zone us-central1-a \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Atualizar imagem no deployment do cluster GKE
         run: |
-          kubectl set image deployment/nextjs-frontend \
+          kubectl set image deployment/listapro-frontend-prod \
             listapro-frontend=${{ secrets.DOCKER_USERNAME }}/listapro-frontend:${{ steps.vars.outputs.short_sha }} \
-            -n production
+            -n listapro-prod
 
       - name: Verificar rollout
-        run: kubectl rollout status deployment/nextjs-frontend -n production
+        run: kubectl rollout status deployment/listapro-frontend-prod -n listapro-prod
