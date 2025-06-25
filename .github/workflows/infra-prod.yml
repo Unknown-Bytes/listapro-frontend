@@ -1,4 +1,4 @@
-name: MANUAL Deploy Production Infrastructure
+name: MANUAL Deploy Staging Infrastructure
 
 on:
   workflow_dispatch:
@@ -18,9 +18,9 @@ on:
         - destroy
 
 env:
-  REGISTRY: docker.io
-  REGISTRY_NAME: brunovn7
-  CLUSTER_NAME: listapro-prod-cluster
+  REGISTRY: registry.digitalocean.com
+  REGISTRY_NAME: listapro-staging-registry
+  CLUSTER_NAME: listapro-staging-cluster
 
 jobs:
   validate-input:
@@ -34,10 +34,10 @@ jobs:
         fi
         echo "✅ Confirmação válida. Prosseguindo com o deploy da infraestrutura..."
 
-  infrastructure-production:
+  infrastructure-staging:
     runs-on: ubuntu-latest
     needs: validate-input
-    environment: production
+    environment: staging
     
     steps:
     - name: 📥 Checkout code
@@ -67,19 +67,19 @@ jobs:
         doctl kubernetes options versions --output json | jq -r '.[0].slug'
 
     # Deploy Infrastructure usando script inteligente
-    - name: 🚀 Deploy Production Infrastructure
+    - name: 🚀 Deploy Staging Infrastructure
       run: |
         chmod +x scripts/universal-deploy.sh
         chmod +x scripts/smart-deploy-do.sh
         
-        # Set environment variables for production deployment
+        # Set environment variables for staging deployment
         export DIGITALOCEAN_TOKEN="${{ secrets.DIGITALOCEAN_TOKEN }}"
         export SKIP_CONFIRM=1
         
-        # Run smart deployment for production
-        ./scripts/universal-deploy.sh digitalocean production ${{ github.event.inputs.action }}
+        # Run smart deployment for staging
+        ./scripts/universal-deploy.sh digitalocean staging ${{ github.event.inputs.action }}
 
-    - name: 🔧 Configure kubectl for Production Cluster
+    - name: 🔧 Configure kubectl for Staging Cluster
       if: github.event.inputs.action == 'apply'
       run: |
         # Get cluster name and configure kubectl
@@ -107,21 +107,21 @@ jobs:
         fi
       continue-on-error: true
 
-    - name: 📋 Production Infrastructure Summary
+    - name: 📋 Staging Infrastructure Summary
       run: |
-        echo "🎉 Production Infrastructure action completed!"
+        echo "🎉 Staging Infrastructure action completed!"
         echo "Cloud: Digital Ocean"
-        echo "Environment: production"
+        echo "Environment: staging"
         echo "Action: ${{ github.event.inputs.action }}"
-        echo "Registry: Docker Hub (${{ env.REGISTRY_NAME }})"
+        echo "Registry: ${{ env.REGISTRY_NAME }}"
         echo "Cluster: ${{ env.CLUSTER_NAME }}"
         echo ""
         echo "🔗 Next steps:"
-        echo "1. Run the build-prod pipeline for application deployment"
-        echo "2. Test the production environment"
-        echo "3. Monitor application performance"
+        echo "1. Run the build-stage pipeline for application deployment"
+        echo "2. Test the staging environment"
+        echo "3. Promote to production when ready"
         echo ""
         echo "🔧 Useful commands:"
         echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
-        echo "kubectl get pods -n listapro-prod"
-        echo "kubectl get services -n listapro-prod"
+        echo "kubectl get pods -n listapro-staging"
+        echo "kubectl get services -n listapro-staging"
