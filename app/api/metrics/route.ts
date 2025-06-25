@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-static';
+
 // Simulação de métricas para Prometheus
 let requestCount = 0;
 const startTime = Date.now();

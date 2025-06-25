@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 
 # Construir o aplicativo Next.js com exportação estática
-RUN npm run build && npm run export
+RUN npm run build
 
 # Nginx stage
 FROM nginx:alpine
