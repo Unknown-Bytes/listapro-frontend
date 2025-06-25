@@ -31,16 +31,8 @@ spec:
           image: brunovn7/listapro-frontend:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 3000
+            - containerPort: 80
               name: http
-          env:
-            - name: ENVIRONMENT
-              value: "production"
-            - name: NODE_ENV
-              value: "production"
-          envFrom:
-            - configMapRef:
-                name: frontend-config
           resources:
             requests:
               memory: "256Mi"
@@ -51,12 +43,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 3000
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /
-              port: 3000
+              port: 80
             initialDelaySeconds: 30
             periodSeconds: 10

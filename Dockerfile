@@ -10,33 +10,20 @@ RUN npm ci
 # Copiar o restante do código fonte
 COPY . .
 
-# Construir o aplicativo Next.js (build normal, não estático)
-RUN npm run build
+# Construir o aplicativo Next.js com exportação estática
+RUN npm run build && npm run export
 
-# Production stage - Node.js runtime
-FROM node:18-alpine AS runner
+# Nginx stage
+FROM nginx:alpine
 
-WORKDIR /app
+# Copiar os arquivos estáticos gerados
+COPY --from=builder /app/out /usr/share/nginx/html
 
-# Copiar os arquivos necessários do builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
+# Copiar a configuração do Nginx personalizada
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Instalar apenas dependências de produção
-RUN npm ci --only=production && npm cache clean --force
+# Expor a porta 80
+EXPOSE 80
 
-# Criar usuário não-root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Dar permissões corretas
-RUN chown -R nextjs:nodejs /app
-USER nextjs
-
-# Expor a porta 3000
-EXPOSE 3000
-
-# Iniciar o Next.js
-CMD ["npm", "start"]
+# Iniciar o Nginx
+CMD ["nginx", "-g", "daemon off;"]
