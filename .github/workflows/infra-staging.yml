@@ -52,7 +52,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DO_STAGING_TOKEN }}
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
     - name: ⚙️ Setup kubectl
       uses: azure/setup-kubectl@v3
