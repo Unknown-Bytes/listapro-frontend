@@ -135,6 +135,7 @@ jobs:
         # Verificar se o chart customizado existe
         if [ -d "./helm/monitoring" ]; then
           echo "📊 Usando chart customizado de monitoring"
+          helm dependency build ./helm/monitoring
           helm upgrade --install monitoring-prod ./helm/monitoring \
             --namespace monitoring-prod \
             --create-namespace \
