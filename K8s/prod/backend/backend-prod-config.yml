@@ -4,9 +4,9 @@ metadata:
   name: backend-config
   namespace: listapro-prod
   labels:
-    app: backend
+    app: listapro-backend-prod
 data:
-  DB_HOST: "postgres"
+  DB_HOST: "postgres.listapro-prod.svc.cluster.local"
   DB_NAME: "listapro"
   DB_USER: "backend"
   DB_PORT: "5432"

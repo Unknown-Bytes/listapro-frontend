@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: stage
+  namespace: listapro-stage
   labels:
     app: postgres
 spec:

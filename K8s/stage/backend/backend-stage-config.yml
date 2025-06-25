@@ -6,7 +6,7 @@ metadata:
   labels:
     app: listapro-backend-stage
 data:
-  DB_HOST: "postgres"
+  DB_HOST: "postgres.listapro-stage.svc.cluster.local"
   DB_NAME: "listapro"
   DB_USER: "backend"
   DB_PORT: "5432"

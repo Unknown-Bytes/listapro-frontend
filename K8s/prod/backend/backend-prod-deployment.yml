@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: listapro-backend-prod
   namespace: listapro-prod
   labels:
-    app: backend
+    app: listapro-backend-prod
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: listapro-backend-prod
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        app: backend
+        app: listapro-backend-prod
     spec:
       containers:
         - name: backend
