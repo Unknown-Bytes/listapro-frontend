@@ -87,19 +87,6 @@ jobs:
           echo "   Actions → 'Deploy Infrastructure - Production (GCP) - MANUAL'"
         fi
 
-    - name: Get cluster name
-      id: get-cluster
-      run: |
-        # Cluster name será definido no step anterior
-        echo "cluster-name=${{ needs.check-infrastructure.outputs.cluster-name }}" >> $GITHUB_OUTPUT
-        echo "cluster-zone=${{ needs.check-infrastructure.outputs.cluster-zone }}" >> $GITHUB_OUTPUT
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        if ! command -v gke-gcloud-auth-plugin &> /dev/null; then
-          sudo apt-get update && sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
-        fi
-
   setup-kubernetes:
     runs-on: ubuntu-latest
     needs: check-infrastructure
@@ -115,6 +102,12 @@ jobs:
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        if ! command -v gke-gcloud-auth-plugin &> /dev/null; then
+          sudo apt-get update && sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+        fi
 
     - name: Get GKE credentials
       run: |
