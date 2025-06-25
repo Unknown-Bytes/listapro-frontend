@@ -38,9 +38,20 @@ jobs:
 
     - name: Check if infrastructure exists
       id: check-infra
+      env:
+        GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
       run: |
         # Tentar encontrar cluster com nomes comuns de produção
-        CLUSTER_NAMES=("${{ secrets.GKE_CLUSTER_NAME }}" "prod-cluster" "listapro-prod-cluster" "listapro-production" "production-cluster")
+        # Debug: mostrar valor do secret GKE_CLUSTER_NAME
+        echo "Valor do secret GKE_CLUSTER_NAME: '$GKE_CLUSTER_NAME'"
+        
+        # Se o secret estiver presente, priorizar ele e não testar outros nomes
+        if [ -n "$GKE_CLUSTER_NAME" ] && [ "$GKE_CLUSTER_NAME" != "null" ]; then
+          CLUSTER_NAMES=("$GKE_CLUSTER_NAME")
+        else
+          CLUSTER_NAMES=("prod-cluster" "listapro-prod-cluster" "listapro-production" "production-cluster")
+        fi
+
         ZONES=("${{ env.REGION }}-a" "${{ env.REGION }}-b" "${{ env.REGION }}-c" "${{ env.REGION }}")
         
         FOUND_CLUSTER=""
@@ -55,15 +66,20 @@ jobs:
         # Tentar encontrar cluster por nome
         for cluster_name in "${CLUSTER_NAMES[@]}"; do
           if [ -n "$cluster_name" ] && [ "$cluster_name" != "null" ]; then
-            echo "🔍 Testando cluster: $cluster_name"
+            echo "🔍 Testando cluster: '$cluster_name'"
             for zone in "${ZONES[@]}"; do
+              echo "  🌍 Testando zona: $zone"
               if gcloud container clusters describe "$cluster_name" --zone="$zone" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
                 FOUND_CLUSTER="$cluster_name"
                 FOUND_ZONE="$zone"
                 echo "✅ Cluster encontrado: $cluster_name na zona $zone"
                 break 2
+              else
+                echo "  ❌ Não encontrado em $zone"
               fi
             done
+          else
+            echo "⚠️ Nome de cluster vazio ou null: '$cluster_name'"
           fi
         done
         
@@ -71,9 +87,11 @@ jobs:
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "cluster-name=$FOUND_CLUSTER" >> $GITHUB_OUTPUT
           echo "cluster-zone=$FOUND_ZONE" >> $GITHUB_OUTPUT
-          echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER"
+          echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER na zona $FOUND_ZONE"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
+          echo "cluster-name=" >> $GITHUB_OUTPUT
+          echo "cluster-zone=" >> $GITHUB_OUTPUT
           echo "❌ Nenhum cluster de produção encontrado"
           echo ""
           echo "💡 Clusters procurados:"
@@ -122,6 +140,24 @@ jobs:
       run: |
         CLUSTER_NAME="${{ needs.check-infrastructure.outputs.cluster-name }}"
         CLUSTER_ZONE="${{ needs.check-infrastructure.outputs.cluster-zone }}"
+        
+        # Verificar se o cluster name foi encontrado
+        if [ -z "$CLUSTER_NAME" ] || [ "$CLUSTER_NAME" = "null" ]; then
+          echo "❌ ERRO: Nome do cluster não foi encontrado!"
+          echo "Debug info:"
+          echo "  CLUSTER_NAME: '$CLUSTER_NAME'"
+          echo "  CLUSTER_ZONE: '$CLUSTER_ZONE'"
+          echo "  infrastructure-exists: ${{ needs.check-infrastructure.outputs.infrastructure-exists }}"
+          echo ""
+          echo "💡 Isso pode indicar:"
+          echo "1. O cluster existe mas com nome diferente do esperado"
+          echo "2. O cluster está em zona diferente"
+          echo "3. Problema nas permissões do service account"
+          echo ""
+          echo "🔍 Para debug, veja os logs do job 'check-infrastructure'"
+          exit 1
+        fi
+        
         echo "🔧 Configurando acesso ao cluster $CLUSTER_NAME na zona $CLUSTER_ZONE"
         
         # Set the auth plugin environment variable
