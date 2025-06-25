@@ -85,6 +85,7 @@ jobs:
           echo ""
           echo "🏗️  Para criar a infraestrutura, execute a pipeline manual:"
           echo "   Actions → 'Deploy Infrastructure - Production (GCP) - MANUAL'"
+        fi
 
     - name: Get cluster name
       id: get-cluster
