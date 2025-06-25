@@ -111,40 +111,55 @@ get_environment_choice() {
 # DigitalOcean deployment function - delegates to the proven working script
 deploy_digitalocean() {
     local environment="$1"
-    local registry_name="$2"
+    local terraform_action="$2"
     
     echo -e "${BLUE}🌊 Starting DigitalOcean deployment...${NC}"
-    echo -e "${PURPLE}   Using proven working smart-deploy.sh script${NC}"
+    echo -e "${PURPLE}   Environment: $environment${NC}"
+    echo -e "${PURPLE}   Action: $terraform_action${NC}"
     
-    # Check if the proven working script exists
-    if [[ ! -f "$SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh" ]]; then
-        echo -e "${RED}❌ DigitalOcean smart-deploy script not found at expected location${NC}"
-        echo "   Expected: $SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
-        exit 1
-    fi
-    
-    # Make script executable
-    chmod +x "$SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
-    
-    # Set environment variables for automatic execution
-    export SKIP_CONFIRM=1
-    
-    # Required environment variables
-    if [[ -z "$GITHUB_CLIENT_ID" ]]; then
-        echo -e "${YELLOW}⚠️  GITHUB_CLIENT_ID not set${NC}"
-    fi
-    
-    # Execute the proven working script
-    echo -e "${PURPLE}🚀 Executing DigitalOcean smart deployment...${NC}"
-    cd "$SCRIPT_DIR/../backupfromoldproject"
-    
-    if [[ -n "$registry_name" ]]; then
-        ./scripts/smart-deploy.sh "$environment" "$registry_name"
+    # Use the new smart deploy script for staging
+    if [[ "$environment" == "staging" ]]; then
+        if [[ ! -f "$SCRIPT_DIR/smart-deploy-do.sh" ]]; then
+            echo -e "${RED}❌ DigitalOcean staging script not found at: $SCRIPT_DIR/smart-deploy-do.sh${NC}"
+            exit 1
+        fi
+        
+        # Make script executable and run
+        chmod +x "$SCRIPT_DIR/smart-deploy-do.sh"
+        
+        echo -e "${PURPLE}🚀 Executing DigitalOcean smart deployment for staging...${NC}"
+        "$SCRIPT_DIR/smart-deploy-do.sh" "$terraform_action"
+        
     else
+        # For production, use the proven working script
+        echo -e "${PURPLE}   Using proven working smart-deploy.sh script for production${NC}"
+        
+        # Check if the proven working script exists
+        if [[ ! -f "$SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh" ]]; then
+            echo -e "${RED}❌ DigitalOcean smart-deploy script not found at expected location${NC}"
+            echo "   Expected: $SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
+            exit 1
+        fi
+        
+        # Make script executable
+        chmod +x "$SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
+        
+        # Set environment variables for automatic execution
+        export SKIP_CONFIRM=1
+        
+        # Required environment variables
+        if [[ -z "$GITHUB_CLIENT_ID" ]]; then
+            echo -e "${YELLOW}⚠️  GITHUB_CLIENT_ID not set${NC}"
+        fi
+        
+        # Execute the proven working script
+        echo -e "${PURPLE}🚀 Executing DigitalOcean smart deployment for production...${NC}"
+        cd "$SCRIPT_DIR/../backupfromoldproject"
+        
         ./scripts/smart-deploy.sh "$environment"
+        
+        cd "$SCRIPT_DIR/.."
     fi
-    
-    cd "$SCRIPT_DIR/.."
     
     echo -e "${GREEN}✅ DigitalOcean deployment completed successfully!${NC}"
 }

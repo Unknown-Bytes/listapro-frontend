@@ -1,21 +1,40 @@
-name: Deploy Infrastructure - Production (GCP)
+name: Deploy Infrastructure - Production (GCP) - MANUAL
 
 on:
-  push:
-    branches: [ main, master ]
-    paths:
-      - 'terraform/gcp/**'
-      - 'K8s/prod/**'
-      - 'helm/**'
   workflow_dispatch:
+    inputs:
+      confirm_deployment:
+        description: 'Confirma o deploy da infraestrutura? (Digite "CONFIRMO" para continuar)'
+        required: true
+        default: ''
+      environment:
+        description: 'Ambiente de deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: us-central1
 
 jobs:
+  validate-input:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate Confirmation
+      run: |
+        if [ "${{ github.event.inputs.confirm_deployment }}" != "CONFIRMO" ]; then
+          echo "❌ Deploy cancelado. Digite 'CONFIRMO' para confirmar o deploy da infraestrutura."
+          exit 1
+        fi
+        echo "✅ Confirmação válida. Prosseguindo com o deploy da infraestrutura..."
+
   terraform-plan:
     runs-on: ubuntu-latest
+    needs: validate-input
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -53,13 +72,13 @@ jobs:
     - name: Upload Terraform Plan
       uses: actions/upload-artifact@v4
       with:
-        name: terraform-plan-prod-infra
+        name: terraform-plan-prod-infra-${{ github.run_number }}
         path: terraform/gcp/tfplan
+        retention-days: 30
 
   terraform-apply:
     runs-on: ubuntu-latest
     needs: terraform-plan
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     environment: production-infrastructure
     outputs:
       cluster-name: ${{ steps.terraform-output.outputs.cluster-name }}
@@ -85,7 +104,7 @@ jobs:
     - name: Download Terraform Plan
       uses: actions/download-artifact@v4
       with:
-        name: terraform-plan-prod-infra
+        name: terraform-plan-prod-infra-${{ github.run_number }}
         path: terraform/gcp/
 
     - name: Terraform Init
@@ -122,54 +141,30 @@ jobs:
         echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
         echo "artifact-registry-url=$(terraform output -raw artifact_registry_url)" >> $GITHUB_OUTPUT
 
-  setup-kubernetes:
-    runs-on: ubuntu-latest
-    needs: terraform-apply
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - name: Save Infrastructure Info
+      run: |
+        echo "🏗️ Infraestrutura criada com sucesso!"
+        echo "📋 Informações da infraestrutura:"
+        echo "- Cluster: ${{ steps.terraform-output.outputs.cluster-name }}"
+        echo "- Registry: ${{ steps.terraform-output.outputs.artifact-registry-url }}"
+        echo "- Região: ${{ env.REGION }}"
+        echo "- Projeto: ${{ env.PROJECT_ID }}"
+        
+        # Salvar informações para uso posterior
+        mkdir -p infrastructure-info
+        cat > infrastructure-info/infra-details.json << EOF
+        {
+          "cluster_name": "${{ steps.terraform-output.outputs.cluster-name }}",
+          "artifact_registry_url": "${{ steps.terraform-output.outputs.artifact-registry-url }}",
+          "region": "${{ env.REGION }}",
+          "project_id": "${{ env.PROJECT_ID }}",
+          "deployment_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
+    - name: Upload Infrastructure Info
+      uses: actions/upload-artifact@v4
       with:
-        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-
-    - name: Get GKE credentials
-      run: |
-        gcloud container clusters get-credentials ${{ needs.terraform-apply.outputs.cluster-name }} --zone=${{ env.REGION }}-a --project=${{ env.PROJECT_ID }}
-
-    - name: Create Namespaces
-      run: |
-        kubectl apply -f K8s/prod/namespace-prod.yaml
-
-    - name: Install Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: '3.12.0'
-
-    - name: Deploy Monitoring Stack
-      run: |
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-        helm repo add grafana https://grafana.github.io/helm-charts
-        helm repo update
-        
-        helm upgrade --install monitoring-prod ./helm/monitoring \
-          --namespace monitoring-prod \
-          --create-namespace \
-          --values ./helm/monitoring/values-production.yaml \
-          --wait
-
-    - name: Verify Infrastructure
-      run: |
-        echo "=== Cluster Status ==="
-        kubectl get nodes
-        kubectl get namespaces
-        
-        echo "=== Monitoring Status ==="
-        kubectl get pods -n monitoring-prod
-        kubectl get services -n monitoring-prod
-        
-        echo "🎉 Production Infrastructure deployed successfully!"
+        name: infrastructure-info-${{ github.run_number }}
+        path: infrastructure-info/
+        retention-days: 90

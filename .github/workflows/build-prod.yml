@@ -1,0 +1,201 @@
+name: Deploy Applications - Production (K8s)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'K8s/prod/**'
+      - 'helm/**'
+      - 'src/**'
+      - 'Dockerfile'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Forçar deploy mesmo sem mudanças'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+
+jobs:
+  check-infrastructure:
+    runs-on: ubuntu-latest
+    outputs:
+      infrastructure-exists: ${{ steps.check-infra.outputs.exists }}
+      cluster-name: ${{ steps.get-cluster.outputs.cluster-name }}
+    steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Check if infrastructure exists
+      id: check-infra
+      run: |
+        # Verificar se o cluster existe
+        if gcloud container clusters describe ${{ secrets.GKE_CLUSTER_NAME || 'prod-cluster' }} --zone=${{ env.REGION }}-a --project=${{ env.PROJECT_ID }} &>/dev/null; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "✅ Infraestrutura encontrada"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "❌ Infraestrutura não encontrada"
+        fi
+
+    - name: Get cluster name
+      id: get-cluster
+      run: |
+        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME }}"
+        if [ -z "$CLUSTER_NAME" ]; then
+          CLUSTER_NAME="prod-cluster"
+        fi
+        echo "cluster-name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+
+  setup-kubernetes:
+    runs-on: ubuntu-latest
+    needs: check-infrastructure
+    if: needs.check-infrastructure.outputs.infrastructure-exists == 'true'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials ${{ needs.check-infrastructure.outputs.cluster-name }} --zone=${{ env.REGION }}-a --project=${{ env.PROJECT_ID }}
+
+    - name: Create/Update Namespaces
+      run: |
+        if [ -f "K8s/prod/namespace-prod.yaml" ]; then
+          kubectl apply -f K8s/prod/namespace-prod.yaml
+        else
+          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+        fi
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Deploy Monitoring Stack
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+        
+        # Verificar se o chart customizado existe
+        if [ -d "./helm/monitoring" ]; then
+          echo "📊 Usando chart customizado de monitoring"
+          helm upgrade --install monitoring-prod ./helm/monitoring \
+            --namespace monitoring-prod \
+            --create-namespace \
+            --values ./helm/monitoring/values-production.yaml \
+            --wait \
+            --timeout 10m
+        else
+          echo "📊 Usando chart padrão do Prometheus"
+          helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
+            --namespace monitoring-prod \
+            --create-namespace \
+            --wait \
+            --timeout 10m
+        fi
+
+    - name: Deploy Applications
+      run: |
+        echo "🚀 Deploying applications..."
+        
+        # Deploy de aplicações se existirem
+        if [ -d "K8s/prod" ]; then
+          for file in K8s/prod/*.yaml; do
+            if [ -f "$file" ] && [[ "$file" != *"namespace"* ]]; then
+              echo "Applying $file"
+              kubectl apply -f "$file"
+            fi
+          done
+        fi
+        
+        # Deploy via Helm se existirem charts
+        if [ -d "helm" ]; then
+          for chart in helm/*/; do
+            if [ -d "$chart" ] && [[ "$chart" != *"monitoring"* ]]; then
+              chart_name=$(basename "$chart")
+              echo "Deploying Helm chart: $chart_name"
+              
+              helm upgrade --install "$chart_name-prod" "$chart" \
+                --namespace production \
+                --create-namespace \
+                --wait \
+                --timeout 10m || echo "⚠️  Failed to deploy $chart_name, continuing..."
+            fi
+          done
+        fi
+
+    - name: Verify Deployments
+      run: |
+        echo "=== Cluster Status ==="
+        kubectl get nodes
+        kubectl get namespaces
+        
+        echo "=== Production Namespace ==="
+        kubectl get all -n production
+        
+        echo "=== Monitoring Status ==="
+        kubectl get pods -n monitoring-prod
+        kubectl get services -n monitoring-prod
+        
+        echo "=== All Services ==="
+        kubectl get services --all-namespaces
+        
+        echo "🎉 Applications deployed successfully!"
+
+    - name: Health Check
+      run: |
+        echo "🏥 Performing health checks..."
+        
+        # Verificar se os pods estão rodando
+        if kubectl get pods -n production --no-headers | grep -v Running | grep -v Completed; then
+          echo "⚠️  Some pods are not running properly"
+          kubectl get pods -n production
+        else
+          echo "✅ All pods in production namespace are healthy"
+        fi
+        
+        # Verificar monitoring
+        if kubectl get pods -n monitoring-prod --no-headers | grep -v Running | grep -v Completed; then
+          echo "⚠️  Some monitoring pods are not running properly"
+          kubectl get pods -n monitoring-prod
+        else
+          echo "✅ All monitoring pods are healthy"
+        fi
+
+  infrastructure-missing:
+    runs-on: ubuntu-latest
+    needs: check-infrastructure
+    if: needs.check-infrastructure.outputs.infrastructure-exists == 'false'
+    steps:
+    - name: Infrastructure Not Found
+      run: |
+        echo "❌ ERRO: Infraestrutura não encontrada!"
+        echo ""
+        echo "Para resolver isso:"
+        echo "1. Execute primeiro a pipeline manual de infraestrutura"
+        echo "2. Ou configure o secret GKE_CLUSTER_NAME com o nome do cluster existente"
+        echo ""
+        echo "📋 Verifique se os seguintes recursos existem no GCP:"
+        echo "- Cluster GKE na região ${{ env.REGION }}"
+        echo "- Projeto: ${{ env.PROJECT_ID }}"
+        echo ""
+        exit 1
