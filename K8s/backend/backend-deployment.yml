@@ -22,6 +22,8 @@ spec:
         app: listapro-backend
         environment: production
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
       containers:
         - name: backend
           image: "brunovn7/listapro-backend:latest"
@@ -38,13 +40,19 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 8080
-            initialDelaySeconds: 15
-            periodSeconds: 10
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
           livenessProbe:
             tcpSocket:
               port: 8080
-            initialDelaySeconds: 35
-            periodSeconds: 20
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+            successThreshold: 1
           envFrom:
             - configMapRef:
                 name: backend-config
