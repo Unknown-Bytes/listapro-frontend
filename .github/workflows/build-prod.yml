@@ -1,8 +1,19 @@
 name: Deploy Production Environment
 
 on:
-  push, pull_request:
-    branches: [ main ]
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'types/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'K8s/**'
+  pull_request:
+    branches: [main]
     paths:
       - 'app/**'
       - 'components/**'
@@ -36,21 +47,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-        
-    - name: ⚙️ Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: 'npm'
-          
-    - name: 📦 Install dependencies
-      run: npm ci
-        
-    - name: 🧪 Run tests
-      run: npm test
-      continue-on-error: false
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run tests
+        run: npm test
+        continue-on-error: false
 
   check-infrastructure:
     runs-on: ubuntu-latest
@@ -58,184 +69,154 @@ jobs:
       infrastructure-exists: ${{ steps.check-infra.outputs.exists }}
       cluster-name: ${{ steps.get-cluster.outputs.cluster-name }}
     steps:
-    - name: 🌊 Setup DigitalOcean CLI
-      uses: digitalocean/action-doctl@v2
-      with:
-        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: 🌊 Setup DigitalOcean CLI
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
-    - name: 🔍 Check if infrastructure exists
-      id: check-infra
-      run: |
-        # Check if cluster exists
-        if doctl kubernetes cluster list --format Name --no-header | grep -q "^${{ env.CLUSTER_NAME }}$"; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "✅ Staging infrastructure found"
-        else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "❌ Staging infrastructure not found"
-        fi
+      - name: 🔍 Check if infrastructure exists
+        id: check-infra
+        run: |
+          if doctl kubernetes cluster list --format Name --no-header | grep -q "^${{ env.CLUSTER_NAME }}$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Staging infrastructure found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ Staging infrastructure not found"
+          fi
 
-    - name: 📝 Get cluster name
-      id: get-cluster
-      run: |
-        echo "cluster-name=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+      - name: 📝 Get cluster name
+        id: get-cluster
+        run: echo "cluster-name=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
 
   build-and-push:
     needs: [test, check-infrastructure]
     if: needs.check-infrastructure.outputs.infrastructure-exists == 'true'
     runs-on: ubuntu-latest
-    
     steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-        
-    - name: 🏷️ Define image tag
-      id: vars
-      run: |
-        if [ "${{ github.event.inputs.image_tag }}" != "" ]; then
-          echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-        fi
-        echo "short_sha=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
 
-    - name: 🔐 Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-            
-    - name: 🏗️ Build Docker image
-      run: |
-        docker build \
-          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
-          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest \
-          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} .
-            
-    - name: 📤 Push Docker images
-      run: |
-        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
-        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest
-        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+      - name: 🏷️ Define image tag
+        id: vars
+        run: |
+          if [ "${{ github.event.inputs.image_tag }}" != "" ]; then
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+          echo "short_sha=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: 🔐 Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🏗️ Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
+            -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} .
+
+      - name: 📤 Push Docker images
+        run: |
+          docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
 
   deploy-staging:
     needs: [check-infrastructure, build-and-push]
     if: needs.check-infrastructure.outputs.infrastructure-exists == 'true'
     runs-on: ubuntu-latest
     environment: staging
-    
     steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
 
-    - name: 🌊 Setup DigitalOcean CLI
-      uses: digitalocean/action-doctl@v2
-      with:
-        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: 🌊 Setup DigitalOcean CLI
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
-    - name: ⚙️ Setup kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.29.0'
-          
-    - name: 🔧 Configure kubectl access
-      run: |
-        doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ env.CLUSTER_NAME }}
-        kubectl cluster-info
-        
-    - name: 🏷️ Define deployment tag
-      id: deploy-vars
-      run: |
-        if [ "${{ github.event.inputs.image_tag }}" != "" ]; then
-          echo "deploy_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "deploy_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-        fi
+      - name: ⚙️ Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
 
-    - name: 🚀 Deploy to Kubernetes
-      run: |
-        IMAGE_TAG="${{ steps.deploy-vars.outputs.deploy_tag }}"
-        
-        # Use existing K8s manifests
-        cd K8s
-        
-        # Apply namespace first
-        kubectl apply -f namespace.yaml
-        
-        # Create temporary modified deployment file with new image
-        cp frontend/frontend-deployment.yml frontend/frontend-deployment-temp.yml
-        
-        # Update image tag in deployment
-        sed -i "s|brunovn7/listapro-frontend:latest|${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-deployment-temp.yml
-        
-        # Apply all manifests
-        kubectl apply -f DB/ || echo "Database already deployed or not needed"
-        kubectl apply -f backend/ || echo "Backend deployment will be handled separately"
-        kubectl apply -f frontend/frontend-config.yml
-        kubectl apply -f frontend/frontend-service.yml
-        kubectl apply -f frontend/frontend-deployment-temp.yml
-        
-        # Clean up temporary file
-        rm frontend/frontend-deployment-temp.yml
-        
-        # Wait for frontend deployment rollout
-        kubectl rollout status deployment/listapro-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+      - name: 🔧 Configure kubectl access
+        run: |
+          doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ env.CLUSTER_NAME }}
+          kubectl cluster-info
 
-    - name: ✅ Verify deployment
-      run: |
-        echo "🔍 Verifying staging deployment..."
-        kubectl get pods -n ${{ env.NAMESPACE }}
-        kubectl get services -n ${{ env.NAMESPACE }}
-        kubectl get ingress -n ${{ env.NAMESPACE }} 2>/dev/null || echo "No ingress configured"
-        
-        # Check if pods are running
-        if kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
-          echo "✅ Frontend pods are running successfully"
-        else
-          echo "❌ Some frontend pods are not running"
-          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=listapro-frontend
-        fi
+      - name: 🏷️ Define deployment tag
+        id: deploy-vars
+        run: |
+          if [ "${{ github.event.inputs.image_tag }}" != "" ]; then
+            echo "deploy_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
 
-    - name: 🧹 Clean old images (Optional - Docker Hub)
-      run: |
-        echo "🧹 Docker Hub cleanup skipped (manual process)"
-        echo "💡 To clean manually: docker image prune or use Docker Hub web interface"
-      continue-on-error: true
+      - name: 🚀 Deploy to Kubernetes
+        run: |
+          IMAGE_TAG="${{ steps.deploy-vars.outputs.deploy_tag }}"
+          cd K8s
+          kubectl apply -f namespace.yaml
+          cp frontend/frontend-deployment.yml frontend/frontend-deployment-temp.yml
+          sed -i "s|brunovn7/listapro-frontend:latest|${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-deployment-temp.yml
+          kubectl apply -f DB/ || echo "Database already deployed or not needed"
+          kubectl apply -f backend/ || echo "Backend deployment will be handled separately"
+          kubectl apply -f frontend/frontend-config.yml
+          kubectl apply -f frontend/frontend-service.yml
+          kubectl apply -f frontend/frontend-deployment-temp.yml
+          rm frontend/frontend-deployment-temp.yml
+          kubectl rollout status deployment/listapro-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+
+      - name: ✅ Verify deployment
+        run: |
+          echo "🔍 Verifying staging deployment..."
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get services -n ${{ env.NAMESPACE }}
+          kubectl get ingress -n ${{ env.NAMESPACE }} 2>/dev/null || echo "No ingress configured"
+          if kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
+            echo "✅ Frontend pods are running successfully"
+          else
+            echo "❌ Some frontend pods are not running"
+            kubectl describe pods -n ${{ env.NAMESPACE }} -l app=listapro-frontend
+          fi
+
+      - name: 🧹 Clean old images (Optional - Docker Hub)
+        run: |
+          echo "🧹 Docker Hub cleanup skipped (manual process)"
+          echo "💡 To clean manually: docker image prune or use Docker Hub web interface"
+        continue-on-error: true
 
   summary:
     needs: [test, check-infrastructure, build-and-push, deploy-staging]
     if: always()
     runs-on: ubuntu-latest
-    
     steps:
-    - name: 📋 Deployment Summary
-      run: |
-        echo "🎉 Staging Build & Deploy completed!"
-        echo ""
-        echo "📋 Summary:"
-        echo "=========="
-        echo "Environment: staging"
-        echo "Cloud: Digital Ocean"
-        echo "Registry: Docker Hub (${{ env.REGISTRY_NAME }})"
-        echo "Image: ${{ env.IMAGE_NAME }}"
-        echo "Cluster: ${{ env.CLUSTER_NAME }}"
-        echo ""
-        echo "📊 Job Results:"
-        echo "Test: ${{ needs.test.result }}"
-        echo "Infrastructure Check: ${{ needs.check-infrastructure.result }}"
-        echo "Build & Push: ${{ needs.build-and-push.result }}"
-        echo "Deploy: ${{ needs.deploy-staging.result }}"
-        echo ""
-        echo "🔗 Useful commands:"
-        echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
-        echo "kubectl get pods -n ${{ env.NAMESPACE }}"
-        echo "kubectl logs -f deployment/listapro-frontend -n ${{ env.NAMESPACE }}"
-
-    # - name: 📊 Usando chart padrão do Prometheus
-    #   run: |
-    #     echo "📊 Usando chart padrão do Prometheus"
-    #     helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
-    #       --namespace monitoring-prod \
-    #       --create-namespace \
-    #       --wait \
-    #       --timeout 10m
+      - name: 📋 Deployment Summary
+        run: |
+          echo "🎉 Staging Build & Deploy completed!"
+          echo ""
+          echo "📋 Summary:"
+          echo "=========="
+          echo "Environment: staging"
+          echo "Cloud: Digital Ocean"
+          echo "Registry: Docker Hub (${{ env.REGISTRY_NAME }})"
+          echo "Image: ${{ env.IMAGE_NAME }}"
+          echo "Cluster: ${{ env.CLUSTER_NAME }}"
+          echo ""
+          echo "📊 Job Results:"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Infrastructure Check: ${{ needs.check-infrastructure.result }}"
+          echo "Build & Push: ${{ needs.build-and-push.result }}"
+          echo "Deploy: ${{ needs.deploy-staging.result }}"
+          echo ""
+          echo "🔗 Useful commands:"
+          echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
+          echo "kubectl get pods -n ${{ env.NAMESPACE }}"
+          echo "kubectl logs -f deployment/listapro-frontend -n ${{ env.NAMESPACE }}"
