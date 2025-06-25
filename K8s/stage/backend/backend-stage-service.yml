@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
-  namespace: stage
+  name: listapro-backend-stage-service
+  namespace: listapro-stage
   labels:
-    app: backend
+    app: listapro-backend-stage
 spec:
   type: ClusterIP
   selector:
-    app: backend
+    app: listapro-backend-stage
   ports:
     - protocol: TCP
       port: 8080

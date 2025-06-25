@@ -2,8 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: frontend-config
-  namespace: stage
+  namespace: listapro-stage
   labels:
-    app: frontend
+    app: listapro-frontend-stage
 data:
-  BACKEND_URL: "http://backend:8080"
+  NEXT_PUBLIC_API_URL: "http://listapro-backend-stage-service:8080/api"
+  BACKEND_URL: "http://listapro-backend-stage-service:8080"

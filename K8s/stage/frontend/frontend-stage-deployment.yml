@@ -31,7 +31,7 @@ spec:
           image: brunovn7/listapro-frontend:stage
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 3000
               name: http
           env:
             - name: ENVIRONMENT

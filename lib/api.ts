@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = '/api'; 
+// Configuração da URL da API baseada na variável de ambiente
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || '/api'; 
 
 export interface Task {
   ID: number;

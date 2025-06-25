@@ -2,8 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: frontend-config
-  namespace: production
+  namespace: listapro-prod
   labels:
-    app: frontend
+    app: listapro-frontend-prod
 data:
-  BACKEND_URL: "http://backend:8080"
+  NEXT_PUBLIC_API_URL: "http://listapro-backend-prod-service:8080/api"
+  BACKEND_URL: "http://listapro-backend-prod-service:8080"
