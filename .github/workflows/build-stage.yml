@@ -1,8 +1,8 @@
-name: Deploy Staging Environment
+name: Deploy Production Environment
 
 on:
   push:
-    branches: [ release ]
+    branches: [ stage ]
     paths:
       - 'app/**'
       - 'components/**'
@@ -11,7 +11,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'Dockerfile'
-      - 'K8s/**'
+      - 'K8s/prod/**'
   workflow_dispatch:
     inputs:
       image_tag:
@@ -27,10 +27,9 @@ on:
 env:
   REGISTRY: docker.io
   REGISTRY_NAME: brunovn7
-  CLUSTER_NAME: listapro-staging-cluster
+  CLUSTER_NAME: listapro-prod-cluster
   IMAGE_NAME: listapro-frontend
-  ENVIRONMENT: staging
-  NAMESPACE: listapro
+  ENVIRONMENT: production
 
 jobs:
   test:
@@ -61,7 +60,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean CLI
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        token: ${{ secrets.DO_STAGE_TOKEN }}
 
     - name: 🔍 Check if infrastructure exists
       id: check-infra
@@ -69,10 +68,10 @@ jobs:
         # Check if cluster exists
         if doctl kubernetes cluster list --format Name --no-header | grep -q "^${{ env.CLUSTER_NAME }}$"; then
           echo "exists=true" >> $GITHUB_OUTPUT
-          echo "✅ Staging infrastructure found"
+          echo "✅ Production infrastructure found"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
-          echo "❌ Staging infrastructure not found"
+          echo "❌ Production infrastructure not found"
         fi
 
     - name: 📝 Get cluster name
@@ -118,11 +117,11 @@ jobs:
         docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest
         docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
 
-  deploy-staging:
+  deploy-production:
     needs: [check-infrastructure, build-and-push]
     if: needs.check-infrastructure.outputs.infrastructure-exists == 'true'
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     
     steps:
     - name: 📥 Checkout code
@@ -131,7 +130,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean CLI
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        token: ${{ secrets.DO_STAGE_TOKEN }}
 
     - name: ⚙️ Setup kubectl
       uses: azure/setup-kubectl@v3
@@ -156,44 +155,44 @@ jobs:
       run: |
         IMAGE_TAG="${{ steps.deploy-vars.outputs.deploy_tag }}"
         
-        # Use existing K8s manifests
-        cd K8s
+        # Use existing K8s manifests for production
+        cd K8s/prod
         
         # Apply namespace first
-        kubectl apply -f namespace.yaml
+        kubectl apply -f namespace-prod.yaml
         
         # Create temporary modified deployment file with new image
-        cp frontend/frontend-deployment.yml frontend/frontend-deployment-temp.yml
+        cp frontend/frontend-prod-deployment.yml frontend/frontend-prod-deployment-temp.yml
         
         # Update image tag in deployment
-        sed -i "s|brunovn7/listapro-frontend:latest|${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-deployment-temp.yml
+        sed -i "s|brunovn7/listapro-frontend:latest|${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-prod-deployment-temp.yml
         
         # Apply all manifests
         kubectl apply -f DB/ || echo "Database already deployed or not needed"
         kubectl apply -f backend/ || echo "Backend deployment will be handled separately"
-        kubectl apply -f frontend/frontend-config.yml
-        kubectl apply -f frontend/frontend-service.yml
-        kubectl apply -f frontend/frontend-deployment-temp.yml
+        kubectl apply -f frontend/frontend-prod-config.yml
+        kubectl apply -f frontend/frontend-prod-service.yml
+        kubectl apply -f frontend/frontend-prod-deployment-temp.yml
         
         # Clean up temporary file
-        rm frontend/frontend-deployment-temp.yml
+        rm frontend/frontend-prod-deployment-temp.yml
         
         # Wait for frontend deployment rollout
-        kubectl rollout status deployment/listapro-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/listapro-frontend-prod -n listapro-prod --timeout=300s
 
     - name: ✅ Verify deployment
       run: |
-        echo "🔍 Verifying staging deployment..."
-        kubectl get pods -n ${{ env.NAMESPACE }}
-        kubectl get services -n ${{ env.NAMESPACE }}
-        kubectl get ingress -n ${{ env.NAMESPACE }} 2>/dev/null || echo "No ingress configured"
+        echo "🔍 Verifying production deployment..."
+        kubectl get pods -n listapro-prod
+        kubectl get services -n listapro-prod
+        kubectl get ingress -n listapro-prod 2>/dev/null || echo "No ingress configured"
         
         # Check if pods are running
-        if kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
+        if kubectl get pods -n listapro-prod -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
           echo "✅ Frontend pods are running successfully"
         else
           echo "❌ Some frontend pods are not running"
-          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=listapro-frontend
+          kubectl describe pods -n listapro-prod -l app=listapro-frontend-prod
         fi
 
     - name: 🧹 Clean old images (Optional - Docker Hub)
@@ -203,18 +202,18 @@ jobs:
       continue-on-error: true
 
   summary:
-    needs: [test, check-infrastructure, build-and-push, deploy-staging]
+    needs: [test, check-infrastructure, build-and-push, deploy-production]
     if: always()
     runs-on: ubuntu-latest
     
     steps:
     - name: 📋 Deployment Summary
       run: |
-        echo "🎉 Staging Build & Deploy completed!"
+        echo "🎉 Production Build & Deploy completed!"
         echo ""
         echo "📋 Summary:"
         echo "=========="
-        echo "Environment: staging"
+        echo "Environment: production"
         echo "Cloud: Digital Ocean"
         echo "Registry: Docker Hub (${{ env.REGISTRY_NAME }})"
         echo "Image: ${{ env.IMAGE_NAME }}"
@@ -224,18 +223,9 @@ jobs:
         echo "Test: ${{ needs.test.result }}"
         echo "Infrastructure Check: ${{ needs.check-infrastructure.result }}"
         echo "Build & Push: ${{ needs.build-and-push.result }}"
-        echo "Deploy: ${{ needs.deploy-staging.result }}"
+        echo "Deploy: ${{ needs.deploy-production.result }}"
         echo ""
         echo "🔗 Useful commands:"
         echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
-        echo "kubectl get pods -n ${{ env.NAMESPACE }}"
-        echo "kubectl logs -f deployment/listapro-frontend -n ${{ env.NAMESPACE }}"
-
-    # - name: 📊 Usando chart padrão do Prometheus
-    #   run: |
-    #     echo "📊 Usando chart padrão do Prometheus"
-    #     helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
-    #       --namespace monitoring-prod \
-    #       --create-namespace \
-    #       --wait \
-    #       --timeout 10m
+        echo "kubectl get pods -n listapro-prod"
+        echo "kubectl logs -f deployment/listapro-frontend-prod -n listapro-prod"

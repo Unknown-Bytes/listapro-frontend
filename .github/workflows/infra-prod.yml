@@ -52,7 +52,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DO_TOKEN_PROD }}
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
     - name: ⚙️ Setup kubectl
       uses: azure/setup-kubectl@v3
@@ -73,7 +73,7 @@ jobs:
         chmod +x scripts/smart-deploy-do.sh
         
         # Set environment variables for production deployment
-        export DIGITALOCEAN_TOKEN="${{ secrets.DO_TOKEN_PROD }}"
+        export DIGITALOCEAN_TOKEN="${{ secrets.DIGITALOCEAN_TOKEN }}"
         export SKIP_CONFIRM=1
         
         # Run smart deployment for production
