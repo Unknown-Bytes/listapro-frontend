@@ -236,3 +236,12 @@ jobs:
         echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
         echo "kubectl get pods -n listapro-stage"
         echo "kubectl logs -f deployment/listapro-frontend-stage -n listapro-stage"
+
+    - name: 📊 Usando chart padrão do Prometheus
+      run: |
+        echo "📊 Usando chart padrão do Prometheus"
+        helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
+          --namespace monitoring-prod \
+          --create-namespace \
+          --wait \
+          --timeout 10m
