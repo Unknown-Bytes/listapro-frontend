@@ -25,7 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infrastructure-exists: ${{ steps.check-infra.outputs.exists }}
-      cluster-name: ${{ steps.get-cluster.outputs.cluster-name }}
+      cluster-name: ${{ steps.check-infra.outputs.cluster-name }}
+      cluster-zone: ${{ steps.check-infra.outputs.cluster-zone }}
     steps:
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
@@ -38,23 +39,60 @@ jobs:
     - name: Check if infrastructure exists
       id: check-infra
       run: |
-        # Verificar se o cluster existe
-        if gcloud container clusters describe ${{ secrets.GKE_CLUSTER_NAME || 'prod-cluster' }} --zone=${{ env.REGION }}-a --project=${{ env.PROJECT_ID }} &>/dev/null; then
+        # Tentar encontrar cluster com nomes comuns de produção
+        CLUSTER_NAMES=("${{ secrets.GKE_CLUSTER_NAME }}" "prod-cluster" "listapro-prod-cluster" "listapro-production" "production-cluster")
+        ZONES=("${{ env.REGION }}-a" "${{ env.REGION }}-b" "${{ env.REGION }}-c" "${{ env.REGION }}")
+        
+        FOUND_CLUSTER=""
+        FOUND_ZONE=""
+        
+        echo "🔍 Procurando cluster de produção no projeto ${{ env.PROJECT_ID }}..."
+        
+        # Primeiro, listar todos os clusters disponíveis
+        echo "📋 Clusters disponíveis no projeto:"
+        gcloud container clusters list --format="table(name,location,status)" || echo "Erro ao listar clusters"
+        
+        # Tentar encontrar cluster por nome
+        for cluster_name in "${CLUSTER_NAMES[@]}"; do
+          if [ -n "$cluster_name" ] && [ "$cluster_name" != "null" ]; then
+            echo "🔍 Testando cluster: $cluster_name"
+            for zone in "${ZONES[@]}"; do
+              if gcloud container clusters describe "$cluster_name" --zone="$zone" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
+                FOUND_CLUSTER="$cluster_name"
+                FOUND_ZONE="$zone"
+                echo "✅ Cluster encontrado: $cluster_name na zona $zone"
+                break 2
+              fi
+            done
+          fi
+        done
+        
+        if [ -n "$FOUND_CLUSTER" ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
-          echo "✅ Infraestrutura encontrada"
+          echo "cluster-name=$FOUND_CLUSTER" >> $GITHUB_OUTPUT
+          echo "cluster-zone=$FOUND_ZONE" >> $GITHUB_OUTPUT
+          echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
-          echo "❌ Infraestrutura não encontrada"
+          echo "❌ Nenhum cluster de produção encontrado"
+          echo ""
+          echo "💡 Clusters procurados:"
+          for name in "${CLUSTER_NAMES[@]}"; do
+            if [ -n "$name" ] && [ "$name" != "null" ]; then
+              echo "   - $name"
+            fi
+          done
+          echo ""
+          echo "🏗️  Para criar a infraestrutura, execute a pipeline manual:"
+          echo "   Actions → 'Deploy Infrastructure - Production (GCP) - MANUAL'"
         fi
 
     - name: Get cluster name
       id: get-cluster
       run: |
-        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME }}"
-        if [ -z "$CLUSTER_NAME" ]; then
-          CLUSTER_NAME="prod-cluster"
-        fi
-        echo "cluster-name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+        # Cluster name será definido no step anterior
+        echo "cluster-name=${{ needs.check-infrastructure.outputs.cluster-name }}" >> $GITHUB_OUTPUT
+        echo "cluster-zone=${{ needs.check-infrastructure.outputs.cluster-zone }}" >> $GITHUB_OUTPUT
 
   setup-kubernetes:
     runs-on: ubuntu-latest
@@ -74,7 +112,10 @@ jobs:
 
     - name: Get GKE credentials
       run: |
-        gcloud container clusters get-credentials ${{ needs.check-infrastructure.outputs.cluster-name }} --zone=${{ env.REGION }}-a --project=${{ env.PROJECT_ID }}
+        CLUSTER_NAME="${{ needs.check-infrastructure.outputs.cluster-name }}"
+        CLUSTER_ZONE="${{ needs.check-infrastructure.outputs.cluster-zone }}"
+        echo "🔧 Configurando acesso ao cluster $CLUSTER_NAME na zona $CLUSTER_ZONE"
+        gcloud container clusters get-credentials "$CLUSTER_NAME" --zone="$CLUSTER_ZONE" --project=${{ env.PROJECT_ID }}
 
     - name: Create/Update Namespaces
       run: |
