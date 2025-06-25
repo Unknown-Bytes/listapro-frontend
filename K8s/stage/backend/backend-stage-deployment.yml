@@ -1,15 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
-  namespace: stage
+  name: listapro-backend-stage
+  namespace: listapro-stage
   labels:
-    app: backend
+    app: listapro-backend-stage
+    environment: stage
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: listapro-backend-stage
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -18,12 +19,13 @@ spec:
   template:
     metadata:
       labels:
-        app: backend
+        app: listapro-backend-stage
+        environment: stage
     spec:
       containers:
         - name: backend
-          image: "brunovn7/listapro-backend:dev"
-          imagePullPolicy: IfNotPresent
+          image: "brunovn7/listapro-backend:latest"
+          imagePullPolicy: Always
           resources:
             requests:
               memory: "64Mi"
