@@ -27,7 +27,7 @@ on:
 env:
   REGISTRY: docker.io
   REGISTRY_NAME: brunovn7
-  CLUSTER_NAME: listapro-prod-cluster
+  CLUSTER_NAME: listapro-stage-cluster
   IMAGE_NAME: listapro-frontend
   ENVIRONMENT: production
 
