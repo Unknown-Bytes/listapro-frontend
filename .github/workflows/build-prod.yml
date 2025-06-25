@@ -92,13 +92,49 @@ jobs:
 
       - name: Aplicar manifests do Kubernetes
         run: |
-          kubectl apply -f K8s/prod/
+          echo "=== Aplicando namespace ==="
+          kubectl apply -f K8s/prod/namespace-prod.yaml || echo "Namespace já existe ou erro na aplicação"
+          
+          echo "=== Aplicando ConfigMaps ==="
+          kubectl apply -f K8s/prod/frontend/frontend-prod-config.yml
+          
+          echo "=== Aplicando Services ==="
+          kubectl apply -f K8s/prod/frontend/frontend-prod-service.yml
+          kubectl apply -f K8s/prod/backend/backend-prod-service.yml
+          
+          echo "=== Aplicando Deployments ==="
+          kubectl apply -f K8s/prod/frontend/frontend-prod-deployment.yml
+          kubectl apply -f K8s/prod/backend/
+          
+          echo "=== Verificando se deployment foi criado ==="
+          kubectl get deployment listapro-frontend-prod -n listapro-prod || echo "Deployment ainda não foi criado"
+          
+          echo "=== Aguardando deployment estar disponível ==="
+          kubectl wait --for=condition=available --timeout=300s deployment/listapro-frontend-prod -n listapro-prod || {
+            echo "Deployment não está disponível, verificando eventos e logs..."
+            kubectl describe deployment listapro-frontend-prod -n listapro-prod || echo "Deployment não encontrado"
+            kubectl get events -n listapro-prod --sort-by=.metadata.creationTimestamp || echo "Sem eventos"
+            
+            echo "Tentando recriar o deployment..."
+            kubectl delete deployment listapro-frontend-prod -n listapro-prod --ignore-not-found=true
+            kubectl apply -f K8s/prod/frontend/frontend-prod-deployment.yml
+            
+            echo "Aguardando nova tentativa..."
+            kubectl wait --for=condition=available --timeout=300s deployment/listapro-frontend-prod -n listapro-prod || echo "Falha na segunda tentativa"
+          }
 
       - name: Atualizar imagem no deployment do cluster GKE
         run: |
+          echo "=== Verificando se deployment existe antes da atualização ==="
+          kubectl get deployment listapro-frontend-prod -n listapro-prod
+          
+          echo "=== Atualizando imagem do deployment ==="
           kubectl set image deployment/listapro-frontend-prod \
             listapro-frontend=${{ secrets.DOCKER_USERNAME }}/listapro-frontend:${{ steps.vars.outputs.short_sha }} \
             -n listapro-prod
+            
+          echo "=== Verificando status após atualização ==="
+          kubectl describe deployment listapro-frontend-prod -n listapro-prod
 
       - name: Verificar rollout
         run: kubectl rollout status deployment/listapro-frontend-prod -n listapro-prod

@@ -38,11 +38,6 @@ spec:
               value: "stage"
             - name: NODE_ENV
               value: "staging"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: listapro-stage-secret
-                  key: database-url
           envFrom:
             - configMapRef:
                 name: frontend-config

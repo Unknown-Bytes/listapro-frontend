@@ -38,11 +38,6 @@ spec:
               value: "production"
             - name: NODE_ENV
               value: "production"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: listapro-prod-secret
-                  key: database-url
           envFrom:
             - configMapRef:
                 name: frontend-config
