@@ -38,51 +38,7 @@ jobs:
 
     - name: Check if infrastructure exists
       id: check-infra
-      env:
-        GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
       run: |
-        # Tentar encontrar cluster com nomes comuns de produção
-        # Debug: mostrar valor do secret GKE_CLUSTER_NAME
-        echo "Valor do secret GKE_CLUSTER_NAME: '$GKE_CLUSTER_NAME'"
-        
-        # Se o secret estiver presente, priorizar ele e não testar outros nomes
-        if [ -n "$GKE_CLUSTER_NAME" ] && [ "$GKE_CLUSTER_NAME" != "null" ]; then
-          CLUSTER_NAMES=("$GKE_CLUSTER_NAME")
-        else
-          CLUSTER_NAMES=("prod-cluster" "listapro-prod-cluster" "listapro-production" "production-cluster")
-        fi
-
-        ZONES=("${{ env.REGION }}-a" "${{ env.REGION }}-b" "${{ env.REGION }}-c" "${{ env.REGION }}")
-        
-        FOUND_CLUSTER=""
-        FOUND_ZONE=""
-        
-        echo "🔍 Procurando cluster de produção no projeto ${{ env.PROJECT_ID }}..."
-        
-        # Primeiro, listar todos os clusters disponíveis
-        echo "📋 Clusters disponíveis no projeto:"
-        gcloud container clusters list --format="table(name,location,status)" || echo "Erro ao listar clusters"
-        
-        # Tentar encontrar cluster por nome
-        for cluster_name in "${CLUSTER_NAMES[@]}"; do
-          if [ -n "$cluster_name" ] && [ "$cluster_name" != "null" ]; then
-            echo "🔍 Testando cluster: '$cluster_name'"
-            for zone in "${ZONES[@]}"; do
-              echo "  🌍 Testando zona: $zone"
-              if gcloud container clusters describe "$cluster_name" --zone="$zone" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
-                FOUND_CLUSTER="$cluster_name"
-                FOUND_ZONE="$zone"
-                echo "✅ Cluster encontrado: $cluster_name na zona $zone"
-                break 2
-              else
-                echo "  ❌ Não encontrado em $zone"
-              fi
-            done
-          else
-            echo "⚠️ Nome de cluster vazio ou null: '$cluster_name'"
-          fi
-        done
-        
         # Hardcoded cluster name and zone
         FOUND_CLUSTER="listapro-cluster-final"
         FOUND_ZONE="us-central1-a"
@@ -91,28 +47,6 @@ jobs:
         echo "cluster-zone=$FOUND_ZONE" >> $GITHUB_OUTPUT
         echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER na zona $FOUND_ZONE"
         exit 0
-
-        if [ -n "$FOUND_CLUSTER" ]; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "cluster-name=$FOUND_CLUSTER" >> $GITHUB_OUTPUT
-          echo "cluster-zone=$FOUND_ZONE" >> $GITHUB_OUTPUT
-          echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER na zona $FOUND_ZONE"
-        else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "cluster-name=" >> $GITHUB_OUTPUT
-          echo "cluster-zone=" >> $GITHUB_OUTPUT
-          echo "❌ Nenhum cluster de produção encontrado"
-          echo ""
-          echo "💡 Clusters procurados:"
-          for name in "${CLUSTER_NAMES[@]}"; do
-            if [ -n "$name" ] && [ "$name" != "null" ]; then
-              echo "   - $name"
-            fi
-          done
-          echo ""
-          echo "🏗️  Para criar a infraestrutura, execute a pipeline manual:"
-          echo "   Actions → 'Deploy Infrastructure - Production (GCP) - MANUAL'"
-        fi
 
   setup-kubernetes:
     runs-on: ubuntu-latest
