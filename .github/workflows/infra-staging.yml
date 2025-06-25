@@ -1,4 +1,4 @@
-name: 🏗️ Deploy Infrastructure - Staging (Digital Ocean) - MANUAL
+name: MANUAL Deploy Staging Infrastructure
 
 on:
   workflow_dispatch:

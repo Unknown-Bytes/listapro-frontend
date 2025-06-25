@@ -1,4 +1,4 @@
-name: 🚀 Build & Deploy - Staging (Digital Ocean)
+name: Deploy Staging Environment
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Deploy Applications - Production (K8s)
+name: Deploy Production 
 
 on:
   push:
