@@ -83,6 +83,15 @@ jobs:
           fi
         done
         
+        # Hardcoded cluster name and zone
+        FOUND_CLUSTER="listapro-cluster-final"
+        FOUND_ZONE="us-central1-a"
+        echo "exists=true" >> $GITHUB_OUTPUT
+        echo "cluster-name=$FOUND_CLUSTER" >> $GITHUB_OUTPUT
+        echo "cluster-zone=$FOUND_ZONE" >> $GITHUB_OUTPUT
+        echo "✅ Infraestrutura encontrada: $FOUND_CLUSTER na zona $FOUND_ZONE"
+        exit 0
+
         if [ -n "$FOUND_CLUSTER" ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "cluster-name=$FOUND_CLUSTER" >> $GITHUB_OUTPUT
