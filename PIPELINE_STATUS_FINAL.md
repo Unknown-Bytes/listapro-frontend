@@ -68,7 +68,7 @@
 
 ### Digital Ocean (Staging)
 ```yaml
-DO_STAGING_TOKEN: "dop_v1_..." # Token DO para staging
+DIGITALOCEAN_TOKEN: "dop_v1_..." # Token DO para staging
 ```
 
 ### Google Cloud Platform (Produção)

@@ -10,7 +10,7 @@
 #   additional_args: cloud-specific arguments
 #
 # Environment Variables:
-#   DO_TOKEN_PROD, DO_STAGING_TOKEN: DigitalOcean tokens
+#   DO_TOKEN_PROD, DIGITALOCEAN_TOKEN: DigitalOcean tokens
 #   GCP_CREDENTIALS, GCP_PROJECT_ID: GCP credentials and project
 #   SKIP_CONFIRM: Skip confirmation prompt (for CI/CD)
 

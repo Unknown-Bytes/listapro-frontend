@@ -58,7 +58,7 @@ K8s/stage/
 ## 🔑 Secrets Necessários
 
 ### Digital Ocean
-- `DO_STAGING_TOKEN`: Token de acesso para Digital Ocean
+- `DIGITALOCEAN_TOKEN`: Token de acesso para Digital Ocean
 
 ### Aplicação (se necessário)
 - `GITHUB_CLIENT_ID`: Cliente ID do GitHub OAuth
@@ -174,7 +174,7 @@ doctl registry repository list-tags listapro-staging-registry/listapro-frontend
 ## 🚨 Solução de Problemas
 
 ### Pipeline de infraestrutura falha
-1. Verificar se `DO_STAGING_TOKEN` está configurado nos secrets
+1. Verificar se `DIGITALOCEAN_TOKEN` está configurado nos secrets
 2. Verificar se o token tem permissões para criar clusters e registries
 3. Verificar se a região especificada está disponível
 

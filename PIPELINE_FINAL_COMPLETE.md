@@ -100,7 +100,7 @@ git push origin develop
 - `DB_HOST`, `DB_USER` - Database config
 
 ### **Staging Specific:**
-- `DO_STAGING_TOKEN` - DigitalOcean staging token
+- `DIGITALOCEAN_TOKEN` - DigitalOcean staging token
 - `DB_PASSWORD_STAGING` - Database staging password
 - `JWT_SECRET_STAGING` - JWT staging secret
 - `SESSION_SECRET_STAGING` - Session staging secret

@@ -60,7 +60,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean CLI
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DO_STAGING_TOKEN }}
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
     - name: 🔍 Check if infrastructure exists
       id: check-infra
@@ -101,7 +101,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean CLI
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DO_STAGING_TOKEN }}
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
           
     - name: 🔐 Log in to DigitalOcean Container Registry
       run: doctl registry login
@@ -132,7 +132,7 @@ jobs:
     - name: 🌊 Setup DigitalOcean CLI
       uses: digitalocean/action-doctl@v2
       with:
-        token: ${{ secrets.DO_STAGING_TOKEN }}
+        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
     - name: ⚙️ Setup kubectl
       uses: azure/setup-kubectl@v3

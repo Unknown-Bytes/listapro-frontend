@@ -73,7 +73,7 @@ jobs:
         chmod +x scripts/smart-deploy-do.sh
         
         # Set environment variables for staging deployment
-        export DO_STAGING_TOKEN="${{ secrets.DO_STAGING_TOKEN }}"
+        export DIGITALOCEAN_TOKEN="${{ secrets.DIGITALOCEAN_TOKEN }}"
         export SKIP_CONFIRM=1
         
         # Run smart deployment for staging

@@ -83,7 +83,7 @@ else
     VPC_NAME="listapro-staging-vpc"
     CLUSTER_NAME="listapro-staging-cluster"
     LB_NAME="listapro-staging-lb"
-    TOKEN_VAR="DO_STAGING_TOKEN"
+    TOKEN_VAR="DIGITALOCEAN_TOKEN"
     NAMESPACE_NAME="listapro"
     echo -e "${BLUE}🧪 Staging environment selected${NC}"
 fi

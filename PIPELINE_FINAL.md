@@ -121,7 +121,7 @@ scripts/
 - `DB_PASSWORD` - Database password
 
 ### **DigitalOcean Staging:**
-- `DO_STAGING_TOKEN` - API token staging
+- `DIGITALOCEAN_TOKEN` - API token staging
 - `JWT_SECRET_STAGING` - JWT staging
 - `SESSION_SECRET_STAGING` - Session staging
 - `DATABASE_URL_STAGING` - Database URL staging

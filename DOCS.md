@@ -439,7 +439,7 @@ graph TD
 #### **DigitalOcean**
 ```bash
 export DO_TOKEN_PROD="your-production-token"
-export DO_STAGING_TOKEN="your-staging-token"
+export DIGITALOCEAN_TOKEN="your-staging-token"
 export GITHUB_CLIENT_ID="your-github-client-id"
 export GITHUB_CLIENT_SECRET="your-github-client-secret"
 export JWT_SECRET="your-jwt-secret"

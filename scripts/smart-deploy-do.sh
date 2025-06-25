@@ -55,8 +55,8 @@ check_dependencies() {
 authenticate() {
     echo "🔐 Authenticating with DigitalOcean..."
     
-    if [[ -z "$DO_STAGING_TOKEN" ]]; then
-        echo -e "${RED}❌ DO_STAGING_TOKEN environment variable not set${NC}"
+    if [[ -z "$DIGITALOCEAN_TOKEN" ]]; then
+        echo -e "${RED}❌ DIGITALOCEAN_TOKEN environment variable not set${NC}"
         exit 1
     fi
     

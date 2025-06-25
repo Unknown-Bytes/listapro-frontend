@@ -6,7 +6,7 @@ Para que as pipelines funcionem corretamente, os seguintes secrets devem ser con
 
 ### 🌊 Digital Ocean (Staging)
 
-#### `DO_STAGING_TOKEN` (Obrigatório)
+#### `DIGITALOCEAN_TOKEN` (Obrigatório)
 ```
 Tipo: Personal Access Token
 Descrição: Token de acesso para Digital Ocean API
@@ -121,14 +121,14 @@ DB_PASSWORD_PROD: Senha do banco
 1. Vá para o repositório no GitHub
 2. Settings → Secrets and variables → Actions
 3. Clique em "New repository secret"
-4. Nome: Nome do secret (ex: `DO_STAGING_TOKEN`)
+4. Nome: Nome do secret (ex: `DIGITALOCEAN_TOKEN`)
 5. Value: Valor do secret
 6. Clique em "Add secret"
 
 ### Via GitHub CLI
 ```bash
 # Digital Ocean Token
-gh secret set DO_STAGING_TOKEN
+gh secret set DIGITALOCEAN_TOKEN
 
 # GCP Credentials (de arquivo)
 gh secret set GCP_CREDENTIALS < service-account.json
@@ -153,7 +153,7 @@ gh secret list
 ### 3. Logs de Debug
 As pipelines mostram quais secrets estão faltando:
 ```
-❌ DO_STAGING_TOKEN environment variable not set
+❌ DIGITALOCEAN_TOKEN environment variable not set
 ❌ Failed to authenticate with DigitalOcean
 ```
 
@@ -198,4 +198,4 @@ Se encontrar problemas:
 
 ---
 
-💡 **Dica**: Comece configurando apenas `DO_STAGING_TOKEN` e `GCP_CREDENTIALS` + `GCP_PROJECT_ID` para testar as pipelines básicas primeiro.
+💡 **Dica**: Comece configurando apenas `DIGITALOCEAN_TOKEN` e `GCP_CREDENTIALS` + `GCP_PROJECT_ID` para testar as pipelines básicas primeiro.
