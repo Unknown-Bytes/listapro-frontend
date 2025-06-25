@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://listapro-backend-prod-service:8080/api/:path*'
+      }
+    ];
+  },
 };
 
 export default nextConfig;
