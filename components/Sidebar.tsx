@@ -86,6 +86,7 @@ export default function Sidebar() {
       <h1 className="text-xl font-bold text-gray-800">Minhas Listas!</h1>
         
         <p className="text-sm text-gray-800">Ambiente: Produção</p>
+        <p>2025</p>
       </div>
 
       <div className="mb-4">

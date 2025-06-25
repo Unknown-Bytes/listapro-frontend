@@ -23,11 +23,11 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🌊 Digital Ocean Smart Deploy - Staging${NC}"
+echo -e "${BLUE}DigitalOcean Smart Deploy - Staging${NC}"
 echo "=============================================="
-echo "🔍 Detecting existing resources..."
-echo "📍 Region: $REGION"
-echo "🏷️  Environment: $ENVIRONMENT"
+echo "Detectando recursos existentes..."
+echo "Regiao: $REGION"
+echo "Ambiente: $ENVIRONMENT"
 
 # Function to check if command exists
 command_exists() {
@@ -36,74 +36,74 @@ command_exists() {
 
 # Check dependencies
 check_dependencies() {
-    echo "📋 Checking dependencies..."
+    echo "Verificando dependencias..."
     
     if ! command_exists doctl; then
-        echo -e "${RED}❌ doctl not found. Please install DigitalOcean CLI first.${NC}"
+        echo -e "${RED}ERRO: doctl nao encontrado. Instale o DigitalOcean CLI primeiro.${NC}"
         exit 1
     fi
     
     if ! command_exists kubectl; then
-        echo -e "${RED}❌ kubectl not found. Please install kubectl first.${NC}"
+        echo -e "${RED}ERRO: kubectl nao encontrado. Instale o kubectl primeiro.${NC}"
         exit 1
     fi
     
-    echo -e "${GREEN}✅ Dependencies OK${NC}"
+    echo -e "${GREEN}OK: Dependencias verificadas${NC}"
 }
 
 # Authenticate with DigitalOcean
 authenticate() {
-    echo "🔐 Authenticating with DigitalOcean..."
+    echo "Autenticando com DigitalOcean..."
     
     if [[ -z "$DIGITALOCEAN_TOKEN" ]]; then
-        echo -e "${RED}❌ DIGITALOCEAN_TOKEN environment variable not set${NC}"
+        echo -e "${RED}ERRO: Variavel de ambiente DIGITALOCEAN_TOKEN nao definida${NC}"
         exit 1
     fi
     
     # Test authentication
     if ! doctl account get >/dev/null 2>&1; then
-        echo -e "${RED}❌ Failed to authenticate with DigitalOcean${NC}"
+        echo -e "${RED}ERRO: Falha na autenticacao com DigitalOcean${NC}"
         exit 1
     fi
     
-    echo -e "${GREEN}✅ Successfully authenticated with DigitalOcean${NC}"
+    echo -e "${GREEN}OK: Autenticado com sucesso no DigitalOcean${NC}"
 }
 
 # Check and create container registry
 setup_registry() {
-    echo "📦 Setting up container registry..."
+    echo "Configurando container registry..."
     
     # Check if registry exists
     if doctl registry get "$REGISTRY_NAME" >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Registry '$REGISTRY_NAME' already exists${NC}"
+        echo -e "${GREEN}OK: Registry '$REGISTRY_NAME' ja existe${NC}"
     else
-        echo -e "${YELLOW}⚠️  Registry '$REGISTRY_NAME' not found, creating...${NC}"
+        echo -e "${YELLOW}AVISO: Registry '$REGISTRY_NAME' nao encontrado, criando...${NC}"
         doctl registry create "$REGISTRY_NAME" --region "$REGION"
         
         # Wait for registry to be ready
-        echo "⏳ Waiting for registry to be ready..."
+        echo "Aguardando registry ficar pronto..."
         sleep 10
         
-        echo -e "${GREEN}✅ Registry '$REGISTRY_NAME' created successfully${NC}"
+        echo -e "${GREEN}OK: Registry '$REGISTRY_NAME' criado com sucesso${NC}"
     fi
     
     # Login to registry
     doctl registry login
-    echo -e "${GREEN}✅ Logged into container registry${NC}"
+    echo -e "${GREEN}OK: Login no container registry realizado${NC}"
 }
 
 # Check and create Kubernetes cluster
 setup_cluster() {
-    echo "🚢 Setting up Kubernetes cluster..."
+    echo "Configurando cluster Kubernetes..."
     
     # Check if cluster exists
     if doctl kubernetes cluster get "$CLUSTER_NAME" >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Cluster '$CLUSTER_NAME' already exists${NC}"
+        echo -e "${GREEN}Cluster '$CLUSTER_NAME' already exists${NC}"
         
         # Check cluster status
         STATUS=$(doctl kubernetes cluster get "$CLUSTER_NAME" --format Status --no-header)
         if [[ "$STATUS" != "running" ]]; then
-            echo -e "${YELLOW}⚠️  Cluster is not running (status: $STATUS), waiting...${NC}"
+            echo -e "${YELLOW} Cluster is not running (status: $STATUS), waiting...${NC}"
             # Wait for cluster to be ready
             while [[ "$STATUS" != "running" ]]; do
                 sleep 30
@@ -112,14 +112,14 @@ setup_cluster() {
             done
         fi
     else
-        echo -e "${YELLOW}⚠️  Cluster '$CLUSTER_NAME' not found, creating...${NC}"
+        echo -e "${YELLOW} Cluster '$CLUSTER_NAME' not found, creating...${NC}"
         
         # Get available Kubernetes versions
-        echo "🔍 Getting latest Kubernetes version..."
+        echo "Getting latest Kubernetes version..."
         LATEST_VERSION=$(doctl kubernetes options versions --output json | jq -r '.[0].slug')
         K8S_VERSION="${K8S_VERSION:-$LATEST_VERSION}"
         
-        echo "🚀 Creating cluster with version: $K8S_VERSION"
+        echo "Creating cluster with version: $K8S_VERSION"
         doctl kubernetes cluster create "$CLUSTER_NAME" \
             --region "$REGION" \
             --version "$K8S_VERSION" \
@@ -128,29 +128,29 @@ setup_cluster() {
             --tag "environment:$ENVIRONMENT" \
             --wait
         
-        echo -e "${GREEN}✅ Cluster '$CLUSTER_NAME' created successfully${NC}"
+        echo -e "${GREEN}Cluster '$CLUSTER_NAME' created successfully${NC}"
     fi
     
     # Configure kubectl
-    echo "⚙️ Configuring kubectl..."
+    echo "Configuring kubectl..."
     doctl kubernetes cluster kubeconfig save "$CLUSTER_NAME"
     
     # Verify cluster connection
     if kubectl cluster-info >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Successfully connected to cluster${NC}"
+        echo -e "${GREEN}Successfully connected to cluster${NC}"
     else
-        echo -e "${RED}❌ Failed to connect to cluster${NC}"
+        echo -e "${RED}Failed to connect to cluster${NC}"
         exit 1
     fi
     
     # Show cluster info
-    echo "📊 Cluster Information:"
+    echo "Cluster Information:"
     kubectl get nodes
 }
 
 # Setup basic cluster infrastructure
 setup_cluster_infrastructure() {
-    echo "🏗️ Setting up cluster infrastructure..."
+    echo "Setting up cluster infrastructure..."
     
     # Create namespace if it doesn't exist
     NAMESPACE="listapro-stage"
@@ -158,20 +158,20 @@ setup_cluster_infrastructure() {
         echo "📁 Creating namespace: $NAMESPACE"
         kubectl create namespace "$NAMESPACE"
     else
-        echo -e "${GREEN}✅ Namespace '$NAMESPACE' already exists${NC}"
+        echo -e "${GREEN}Namespace '$NAMESPACE' already exists${NC}"
     fi
     
     # Label namespace
     kubectl label namespace "$NAMESPACE" environment=staging --overwrite
     
-    echo -e "${GREEN}✅ Cluster infrastructure setup complete${NC}"
+    echo -e "${GREEN}Cluster infrastructure setup complete${NC}"
 }
 
 # Main deployment function
 main() {
     local action="${1:-plan}"
     
-    echo "🎯 Starting Digital Ocean staging deployment..."
+    echo "Starting Digital Ocean staging deployment..."
     echo "Action: $action"
     
     check_dependencies
@@ -179,19 +179,19 @@ main() {
     
     case "$action" in
         "plan")
-            echo "📋 Planning deployment (dry-run)..."
+            echo "Planning deployment (dry-run)..."
             setup_registry
             setup_cluster
             setup_cluster_infrastructure
-            echo -e "${BLUE}📋 Plan completed successfully!${NC}"
+            echo -e "${BLUE}Plan completed successfully!${NC}"
             echo "Run with 'apply' to create resources."
             ;;
         "apply")
-            echo "🚀 Applying deployment..."
+            echo "Applying deployment..."
             setup_registry
             setup_cluster
             setup_cluster_infrastructure
-            echo -e "${GREEN}🎉 Deployment completed successfully!${NC}"
+            echo -e "${GREEN}Deployment completed successfully!${NC}"
             ;;
         "destroy")
             echo -e "${RED}🗑️  Destroying staging infrastructure...${NC}"
@@ -210,18 +210,18 @@ main() {
             fi
             
             # Note: We don't delete the registry as it might contain important images
-            echo -e "${YELLOW}⚠️  Registry '$REGISTRY_NAME' was not deleted (contains images)${NC}"
-            echo -e "${GREEN}✅ Infrastructure destroyed${NC}"
+            echo -e "${YELLOW} Registry '$REGISTRY_NAME' was not deleted (contains images)${NC}"
+            echo -e "${GREEN}Infrastructure destroyed${NC}"
             ;;
         *)
-            echo -e "${RED}❌ Invalid action: $action${NC}"
+            echo -e "${RED}Invalid action: $action${NC}"
             echo "Valid actions: plan, apply, destroy"
             exit 1
             ;;
     esac
     
     echo ""
-    echo "🔗 Next steps:"
+    echo "Next steps:"
     echo "1. Configure kubectl: doctl kubernetes cluster kubeconfig save $CLUSTER_NAME"
     echo "2. Deploy application: Run build-stage.yml workflow"
     echo "3. Check status: kubectl get pods -n listapro-stage"

@@ -19,10 +19,10 @@ set -e
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "🌐 Universal Multi-Cloud Deployment System"
-echo "=========================================="
-echo "🔍 Resource Detection & Smart Deployment"
-echo "Adapts to existing infrastructure automatically"
+echo "Sistema Universal de Deploy Multi-Cloud"
+echo "======================================="
+echo "Detecção de Recursos e Deploy Inteligente"
+echo "Adapta-se automaticamente à infraestrutura existente"
 
 # Colors for output
 RED='\033[0;31m'
@@ -41,11 +41,11 @@ command_exists() {
 check_dependencies() {
     local cloud="$1"
     
-    echo "📋 Checking dependencies for $cloud..."
+    echo "Verificando dependencias para $cloud..."
     
     # Common dependencies
     if ! command_exists terraform; then
-        echo -e "${RED}❌ terraform not found. Please install Terraform first.${NC}"
+        echo -e "${RED}ERRO: terraform nao encontrado. Instale o Terraform primeiro.${NC}"
         exit 1
     fi
     
@@ -53,25 +53,25 @@ check_dependencies() {
     case "$cloud" in
         "digitalocean")
             if ! command_exists doctl; then
-                echo -e "${RED}❌ doctl not found. Please install DigitalOcean CLI first.${NC}"
+                echo -e "${RED}ERRO: doctl nao encontrado. Instale o DigitalOcean CLI primeiro.${NC}"
                 echo "   curl -sL https://github.com/digitalocean/doctl/releases/download/v1.100.0/doctl-1.100.0-linux-amd64.tar.gz | tar -xzv"
                 exit 1
             fi
             ;;
         "gcp")
             if ! command_exists gcloud; then
-                echo -e "${RED}❌ gcloud not found. Please install Google Cloud CLI first.${NC}"
+                echo -e "${RED}ERRO: gcloud nao encontrado. Instale o Google Cloud CLI primeiro.${NC}"
                 echo "   curl https://sdk.cloud.google.com | bash"
                 exit 1
             fi
             ;;
         *)
-            echo -e "${RED}❌ Unsupported cloud provider: $cloud${NC}"
+            echo -e "${RED}ERRO: Provedor de nuvem nao suportado: $cloud${NC}"
             exit 1
             ;;
     esac
     
-    echo -e "${GREEN}✅ Dependencies OK for $cloud${NC}"
+    echo -e "${GREEN}OK: Dependencias verificadas para $cloud${NC}"
 }
 
 # Function to get cloud provider choice
@@ -80,17 +80,17 @@ get_cloud_choice() {
         echo "$1"
     else
         echo ""
-        echo "☁️  Select cloud provider:"
+        echo "Selecione o provedor de nuvem:"
         echo "1) DigitalOcean"
         echo "2) Google Cloud Platform (GCP)"
         echo ""
-        read -p "Choose (1-2): " choice
+        read -p "Escolha (1-2): " choice
         
         case $choice in
             1) echo "digitalocean" ;;
             2) echo "gcp" ;;
             *) 
-                echo -e "${RED}❌ Invalid choice. Please select 1 or 2${NC}"
+                echo -e "${RED}ERRO: Escolha invalida. Selecione 1 ou 2${NC}"
                 exit 1
                 ;;
         esac
@@ -103,7 +103,7 @@ get_environment_choice() {
         echo "$1"
     else
         echo ""
-        read -p "🌍 Which environment to deploy? (production/staging): " env
+        read -p "Qual ambiente para deploy? (production/staging): " env
         echo "${env:-staging}"
     fi
 }
@@ -113,31 +113,31 @@ deploy_digitalocean() {
     local environment="$1"
     local terraform_action="$2"
     
-    echo -e "${BLUE}🌊 Starting DigitalOcean deployment...${NC}"
-    echo -e "${PURPLE}   Environment: $environment${NC}"
-    echo -e "${PURPLE}   Action: $terraform_action${NC}"
+    echo -e "${BLUE}Iniciando deploy DigitalOcean...${NC}"
+    echo -e "${PURPLE}   Ambiente: $environment${NC}"
+    echo -e "${PURPLE}   Acao: $terraform_action${NC}"
     
     # Use the new smart deploy script for staging
     if [[ "$environment" == "staging" ]]; then
         if [[ ! -f "$SCRIPT_DIR/smart-deploy-do.sh" ]]; then
-            echo -e "${RED}❌ DigitalOcean staging script not found at: $SCRIPT_DIR/smart-deploy-do.sh${NC}"
+            echo -e "${RED}ERRO: Script DigitalOcean staging nao encontrado em: $SCRIPT_DIR/smart-deploy-do.sh${NC}"
             exit 1
         fi
         
         # Make script executable and run
         chmod +x "$SCRIPT_DIR/smart-deploy-do.sh"
         
-        echo -e "${PURPLE}🚀 Executing DigitalOcean smart deployment for staging...${NC}"
+        echo -e "${PURPLE}Executando deploy inteligente DigitalOcean para staging...${NC}"
         "$SCRIPT_DIR/smart-deploy-do.sh" "$terraform_action"
         
     else
         # For production, use the proven working script
-        echo -e "${PURPLE}   Using proven working smart-deploy.sh script for production${NC}"
+        echo -e "${PURPLE}   Usando script smart-deploy.sh testado para producao${NC}"
         
         # Check if the proven working script exists
         if [[ ! -f "$SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh" ]]; then
-            echo -e "${RED}❌ DigitalOcean smart-deploy script not found at expected location${NC}"
-            echo "   Expected: $SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
+            echo -e "${RED}ERRO: Script DigitalOcean smart-deploy nao encontrado no local esperado${NC}"
+            echo "   Esperado: $SCRIPT_DIR/../backupfromoldproject/scripts/smart-deploy.sh"
             exit 1
         fi
         
@@ -149,11 +149,11 @@ deploy_digitalocean() {
         
         # Required environment variables
         if [[ -z "$GITHUB_CLIENT_ID" ]]; then
-            echo -e "${YELLOW}⚠️  GITHUB_CLIENT_ID not set${NC}"
+            echo -e "${YELLOW}AVISO: GITHUB_CLIENT_ID nao definido${NC}"
         fi
         
         # Execute the proven working script
-        echo -e "${PURPLE}🚀 Executing DigitalOcean smart deployment for production...${NC}"
+        echo -e "${PURPLE}Executando deploy inteligente DigitalOcean para producao...${NC}"
         cd "$SCRIPT_DIR/../backupfromoldproject"
         
         ./scripts/smart-deploy.sh "$environment"
@@ -161,7 +161,7 @@ deploy_digitalocean() {
         cd "$SCRIPT_DIR/.."
     fi
     
-    echo -e "${GREEN}✅ DigitalOcean deployment completed successfully!${NC}"
+    echo -e "${GREEN}Deploy DigitalOcean concluido com sucesso!${NC}"
 }
 
 # GCP deployment function - uses the smart scripts we created
@@ -169,8 +169,8 @@ deploy_gcp() {
     local environment="$1"
     local project_id="$2"
     
-    echo -e "${BLUE}☁️  Starting GCP deployment...${NC}"
-    echo -e "${PURPLE}   Using smart detection and conditional Terraform${NC}"
+    echo -e "${BLUE}Iniciando deploy GCP...${NC}"
+    echo -e "${PURPLE}   Usando deteccao inteligente e Terraform condicional${NC}"
     
     # Set environment-specific variables
     if [[ "$environment" == "production" ]]; then
@@ -191,13 +191,13 @@ deploy_gcp() {
     
     # Check for GCP credentials
     if [[ -z "$GCP_CREDENTIALS" ]]; then
-        echo -e "${RED}❌ GCP_CREDENTIALS environment variable not found${NC}"
+        echo -e "${RED}ERRO: Variavel de ambiente GCP_CREDENTIALS nao encontrada${NC}"
         exit 1
     fi
     
     if [[ -z "$GCP_PROJECT_ID" ]]; then
         if [[ -z "$project_id" ]]; then
-            echo -e "${RED}❌ GCP_PROJECT_ID environment variable or project_id argument required${NC}"
+            echo -e "${RED}ERRO: Variavel GCP_PROJECT_ID ou argumento project_id obrigatorio${NC}"
             exit 1
         else
             export GCP_PROJECT_ID="$project_id"
@@ -205,27 +205,27 @@ deploy_gcp() {
     fi
     
     # Use the smart GCP deployment script we created
-    echo -e "${PURPLE}🔍 Running smart GCP resource detection...${NC}"
+    echo -e "${PURPLE}Running smart GCP resource detection...${NC}"
     
     if [[ -f "$SCRIPT_DIR/smart-deploy-gcp.sh" ]]; then
         chmod +x "$SCRIPT_DIR/smart-deploy-gcp.sh"
         ./smart-deploy-gcp.sh "$environment"
     else
-        echo -e "${YELLOW}⚠️  Smart GCP script not found, falling back to direct Terraform...${NC}"
+        echo -e "${YELLOW} Smart GCP script not found, falling back to direct Terraform...${NC}"
         
         # Navigate to infrastructure directory
         cd "$SCRIPT_DIR/../$INFRA_DIR"
         
         echo ""
-        echo "🚀 Starting GCP Terraform deployment..."
+        echo "Starting GCP Terraform deployment..."
         
         # Initialize Terraform
-        echo "📥 Initializing Terraform..."
+        echo "Initializing Terraform..."
         terraform init
         
         # Plan deployment
         echo ""
-        echo "📋 Planning deployment..."
+        echo "Planning deployment..."
         terraform plan \
             -var="gcp_credentials=$GCP_CREDENTIALS" \
             -var="project_id=$GCP_PROJECT_ID" \
@@ -235,15 +235,15 @@ deploy_gcp() {
         # Apply changes
         echo ""
         if [[ -t 0 && -z "$SKIP_CONFIRM" ]]; then
-            read -p "🚀 Apply these changes? (y/N): " -n 1 -r
+            read -p "Apply these changes? (y/N): " -n 1 -r
             echo ""
             
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                echo -e "${RED}❌ Deployment cancelled${NC}"
+                echo -e "${RED}Deployment cancelled${NC}"
                 exit 1
             fi
         else
-            echo -e "${GREEN}✅ Auto-applying Terraform configuration (non-interactive mode)${NC}"
+            echo -e "${GREEN}Auto-applying Terraform configuration (non-interactive mode)${NC}"
         fi
         
         echo "✨ Applying Terraform configuration..."
@@ -252,25 +252,25 @@ deploy_gcp() {
         cd "$SCRIPT_DIR/.."
     fi
     
-    echo -e "${GREEN}✅ GCP deployment completed successfully!${NC}"
+    echo -e "${GREEN}GCP deployment completed successfully!${NC}"
 }
 
 # Main execution
 main() {
     # Get cloud provider choice
     cloud=$(get_cloud_choice "$1")
-    echo -e "${BLUE}☁️  Cloud Provider: $cloud${NC}"
+    echo -e "${BLUE} Cloud Provider: $cloud${NC}"
     
     # Check dependencies for selected cloud
     check_dependencies "$cloud"
     
     # Get environment choice
     environment=$(get_environment_choice "$2")
-    echo -e "${BLUE}🌍 Environment: $environment${NC}"
+    echo -e "${BLUE}Environment: $environment${NC}"
     
     # Validate environment
     if [[ "$environment" != "production" && "$environment" != "staging" ]]; then
-        echo -e "${RED}❌ Invalid environment. Choose 'production' or 'staging'${NC}"
+        echo -e "${RED}Invalid environment. Choose 'production' or 'staging'${NC}"
         exit 1
     fi
     
@@ -281,11 +281,11 @@ main() {
         echo ""
         
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${RED}❌ Deployment cancelled${NC}"
+            echo -e "${RED}Deployment cancelled${NC}"
             exit 1
         fi
     else
-        echo -e "${GREEN}✅ Auto-continuing with deployment (non-interactive mode)${NC}"
+        echo -e "${GREEN}Auto-continuing with deployment (non-interactive mode)${NC}"
     fi
     
     # Execute cloud-specific deployment
@@ -297,20 +297,20 @@ main() {
             deploy_gcp "$environment" "$3"
             ;;
         *)
-            echo -e "${RED}❌ Unsupported cloud provider: $cloud${NC}"
+            echo -e "${RED}Unsupported cloud provider: $cloud${NC}"
             exit 1
             ;;
     esac
     
     echo ""
-    echo -e "${GREEN}🎉 Universal deployment completed successfully!${NC}"
+    echo -e "${GREEN}Universal deployment completed successfully!${NC}"
     echo ""
-    echo "📋 Summary:"
+    echo "Summary:"
     echo "   Cloud Provider: $cloud"
     echo "   Environment: $environment"
     echo "   Strategy: Detect existing resources and use/create as needed"
     echo ""
-    echo "📋 Next steps:"
+    echo "Next steps:"
     echo "1. Update GitHub repository secrets with real values"
     echo "2. Push code to trigger CI/CD pipeline"
     echo "3. Monitor deployment in GitHub Actions"
@@ -319,13 +319,13 @@ main() {
     # Show cloud-specific next steps
     case "$cloud" in
         "digitalocean")
-            echo "🔗 DigitalOcean useful commands:"
+            echo "DigitalOcean useful commands:"
             echo "   doctl kubernetes cluster kubeconfig save <cluster-name>"
             echo "   kubectl get pods -n formerr"
             echo "   kubectl get services -n formerr"
             ;;
         "gcp")
-            echo "🔗 GCP useful commands:"
+            echo "GCP useful commands:"
             echo "   gcloud container clusters get-credentials <cluster-name> --zone=us-central1-a"
             echo "   kubectl get pods -n listapro"
             echo "   kubectl get services -n listapro"

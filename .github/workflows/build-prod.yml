@@ -1,4 +1,4 @@
-name: Deploy Production Environment
+name: Deploy Ambiente Producao
 
 on:
   push:
@@ -47,19 +47,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      - name: 📦 Install dependencies
+      - name: Instalar dependencias
         run: npm ci
 
-      - name: 🧪 Run tests
+      - name: Executar testes
         run: npm test
         continue-on-error: false
 
@@ -69,20 +69,20 @@ jobs:
       infrastructure-exists: ${{ steps.check-infra.outputs.exists }}
       cluster-name: ${{ steps.get-cluster.outputs.cluster-name }}
     steps:
-      - name: 🌊 Setup DigitalOcean CLI
+      - name: Setup DigitalOcean CLI
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
-      - name: 🔍 Check if infrastructure exists
+      - name: Check if infrastructure exists
         id: check-infra
         run: |
           if doctl kubernetes cluster list --format Name --no-header | grep -q "^${{ env.CLUSTER_NAME }}$"; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Staging infrastructure found"
+            echo "Staging infrastructure found"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "❌ Staging infrastructure not found"
+            echo "Staging infrastructure not found"
           fi
 
       - name: 📝 Get cluster name
@@ -94,7 +94,7 @@ jobs:
     if: needs.check-infrastructure.outputs.infrastructure-exists == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: 🏷️ Define image tag
@@ -107,13 +107,13 @@ jobs:
           fi
           echo "short_sha=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: 🔐 Log in to Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: 🏗️ Build Docker image
+      - name: Build Docker image
         run: |
           docker build \
             -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
@@ -132,20 +132,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🌊 Setup DigitalOcean CLI
+      - name: Setup DigitalOcean CLI
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
-      - name: ⚙️ Setup kubectl
+      - name: Setup kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'v1.29.0'
 
-      - name: 🔧 Configure kubectl access
+      - name: Configure kubectl access
         run: |
           doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ env.CLUSTER_NAME }}
           kubectl cluster-info
@@ -159,7 +159,7 @@ jobs:
             echo "deploy_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: 🚀 Deploy to Kubernetes
+      - name: Deploy to Kubernetes
         run: |
           IMAGE_TAG="${{ steps.deploy-vars.outputs.deploy_tag }}"
           cd K8s
@@ -174,16 +174,16 @@ jobs:
           rm frontend/frontend-deployment-temp.yml
           kubectl rollout status deployment/listapro-frontend -n ${{ env.NAMESPACE }} --timeout=300s
 
-      - name: ✅ Verify deployment
+      - name: Verify deployment
         run: |
-          echo "🔍 Verifying staging deployment..."
+          echo "Verifying staging deployment..."
           kubectl get pods -n ${{ env.NAMESPACE }}
           kubectl get services -n ${{ env.NAMESPACE }}
           kubectl get ingress -n ${{ env.NAMESPACE }} 2>/dev/null || echo "No ingress configured"
           if kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
-            echo "✅ Frontend pods are running successfully"
+            echo "Frontend pods are running successfully"
           else
-            echo "❌ Some frontend pods are not running"
+            echo "Some frontend pods are not running"
             kubectl describe pods -n ${{ env.NAMESPACE }} -l app=listapro-frontend
           fi
 
@@ -198,11 +198,11 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: 📋 Deployment Summary
+      - name: Deployment Summary
         run: |
-          echo "🎉 Staging Build & Deploy completed!"
+          echo "Staging Build & Deploy completed!"
           echo ""
-          echo "📋 Summary:"
+          echo "Summary:"
           echo "=========="
           echo "Environment: staging"
           echo "Cloud: Digital Ocean"
@@ -210,13 +210,13 @@ jobs:
           echo "Image: ${{ env.IMAGE_NAME }}"
           echo "Cluster: ${{ env.CLUSTER_NAME }}"
           echo ""
-          echo "📊 Job Results:"
+          echo "Job Results:"
           echo "Test: ${{ needs.test.result }}"
           echo "Infrastructure Check: ${{ needs.check-infrastructure.result }}"
           echo "Build & Push: ${{ needs.build-and-push.result }}"
           echo "Deploy: ${{ needs.deploy-staging.result }}"
           echo ""
-          echo "🔗 Useful commands:"
+          echo "Useful commands:"
           echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
           echo "kubectl get pods -n ${{ env.NAMESPACE }}"
           echo "kubectl logs -f deployment/listapro-frontend -n ${{ env.NAMESPACE }}"

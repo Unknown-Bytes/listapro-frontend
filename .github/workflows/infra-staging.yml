@@ -1,4 +1,4 @@
-name: MANUAL Deploy Staging Infrastructure
+name: MANUAL Deploy Infraestrutura Staging
 
 on:
   workflow_dispatch:
@@ -26,13 +26,13 @@ jobs:
   validate-input:
     runs-on: ubuntu-latest
     steps:
-    - name: Validate Confirmation
+    - name: Validar Confirmacao
       run: |
         if [ "${{ github.event.inputs.confirm_deployment }}" != "CONFIRMO" ]; then
-          echo "❌ Deploy cancelado. Digite 'CONFIRMO' para confirmar o deploy da infraestrutura."
+          echo "ERRO: Deploy cancelado. Digite 'CONFIRMO' para confirmar o deploy da infraestrutura."
           exit 1
         fi
-        echo "✅ Confirmação válida. Prosseguindo com o deploy da infraestrutura..."
+        echo "OK: Confirmacao valida. Prosseguindo com o deploy da infraestrutura..."
 
   infrastructure-staging:
     runs-on: ubuntu-latest
@@ -40,26 +40,26 @@ jobs:
     environment: staging
     
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout codigo
       uses: actions/checkout@v4
 
-    - name: 🔧 Setup Terraform
+    - name: Configurar Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: 1.6.0
         terraform_wrapper: false
 
-    - name: 🌊 Setup DigitalOcean
+    - name: Setup DigitalOcean
       uses: digitalocean/action-doctl@v2
       with:
         token: ${{ secrets.DO_STAGE_TOKEN }}
 
-    - name: ⚙️ Setup kubectl
+    - name: Setup kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'v1.29.0'
 
-    - name: 🔍 Get Available Kubernetes Versions
+    - name: Get Available Kubernetes Versions
       run: |
         echo "Available Kubernetes versions:"
         doctl kubernetes options versions
@@ -67,7 +67,7 @@ jobs:
         doctl kubernetes options versions --output json | jq -r '.[0].slug'
 
     # Deploy Infrastructure usando script inteligente
-    - name: 🚀 Deploy Staging Infrastructure
+    - name: Deploy Staging Infrastructure
       run: |
         chmod +x scripts/universal-deploy.sh
         chmod +x scripts/smart-deploy-do.sh
@@ -79,7 +79,7 @@ jobs:
         # Run smart deployment for staging
         ./scripts/universal-deploy.sh digitalocean staging ${{ github.event.inputs.action }}
 
-    - name: 🔧 Configure kubectl for Staging Cluster
+    - name: Configure kubectl for Staging Cluster
       if: github.event.inputs.action == 'apply'
       run: |
         # Get cluster name and configure kubectl
@@ -91,7 +91,7 @@ jobs:
         kubectl cluster-info
         kubectl get nodes
 
-    - name: 📊 Install Basic Infrastructure
+    - name: Install Basic Infrastructure
       if: github.event.inputs.action == 'apply'
       run: |
         # Install basic infrastructure if scripts exist
@@ -107,21 +107,21 @@ jobs:
         fi
       continue-on-error: true
 
-    - name: 📋 Staging Infrastructure Summary
+    - name: Staging Infrastructure Summary
       run: |
-        echo "🎉 Staging Infrastructure action completed!"
+        echo "Staging Infrastructure action completed!"
         echo "Cloud: Digital Ocean"
         echo "Environment: staging"
         echo "Action: ${{ github.event.inputs.action }}"
         echo "Registry: ${{ env.REGISTRY_NAME }}"
         echo "Cluster: ${{ env.CLUSTER_NAME }}"
         echo ""
-        echo "🔗 Next steps:"
+        echo "Next steps:"
         echo "1. Run the build-stage pipeline for application deployment"
         echo "2. Test the staging environment"
         echo "3. Promote to production when ready"
         echo ""
-        echo "🔧 Useful commands:"
+        echo "Useful commands:"
         echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
         echo "kubectl get pods -n listapro-staging"
         echo "kubectl get services -n listapro-staging"
