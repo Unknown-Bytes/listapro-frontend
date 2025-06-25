@@ -1,4 +1,4 @@
-name: MANUAL Deploy Staging Infrastructure
+name: MANUAL Deploy Production Infrastructure
 
 on:
   workflow_dispatch:
@@ -77,7 +77,7 @@ jobs:
         export SKIP_CONFIRM=1
         
         # Run smart deployment for staging
-        ./scripts/universal-deploy.sh digitalocean staging ${{ github.event.inputs.action }}
+        ./scripts/universal-deploy.sh digitalocean production ${{ github.event.inputs.action }}
 
     - name: 🔧 Configure kubectl for Staging Cluster
       if: github.event.inputs.action == 'apply'
