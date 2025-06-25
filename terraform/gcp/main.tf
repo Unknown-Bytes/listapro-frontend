@@ -111,6 +111,8 @@ resource "google_container_node_pool" "listapro_prod_nodes" {
   node_config {
     preemptible  = false
     machine_type = var.machine_type
+    disk_size_gb = 20
+    disk_type    = "pd-standard"
 
     # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
     service_account = data.google_service_account.existing_kubernetes.email

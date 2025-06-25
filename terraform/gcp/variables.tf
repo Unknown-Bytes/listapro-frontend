@@ -24,13 +24,13 @@ variable "zone" {
 variable "machine_type" {
   description = "Machine type for GKE nodes"
   type        = string
-  default     = "e2-medium"
+  default     = "e2-small"
 }
 
 variable "node_count" {
   description = "Number of nodes in the GKE cluster"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "db_tier" {
