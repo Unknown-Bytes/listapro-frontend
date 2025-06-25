@@ -13,7 +13,7 @@ REGISTRY_NAME="${REGISTRY_NAME:-listapro-staging-registry}"
 REGION="${DO_REGION:-nyc1}"
 NODE_SIZE="${NODE_SIZE:-s-2vcpu-2gb}"
 NODE_COUNT="${NODE_COUNT:-2}"
-K8S_VERSION="${K8S_VERSION:-1.29.1-do.0}"
+K8S_VERSION="${K8S_VERSION:-1.33.1-do.0}"
 
 # Colors for output
 RED='\033[0;31m'
