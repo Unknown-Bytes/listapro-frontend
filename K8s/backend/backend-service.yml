@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: listapro-backend-service
+  namespace: listapro
+  labels:
+    app: listapro-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: listapro-backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

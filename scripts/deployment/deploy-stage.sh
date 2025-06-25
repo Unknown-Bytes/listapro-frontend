@@ -58,12 +58,12 @@ doctl registry login --expiry-seconds 1200
 docker push registry.digitalocean.com/$REGISTRY_NAME/listapro-frontend:stage
 
 # Atualizar deployment com nova imagem
-sed -i "s|brunovn7/listapro-frontend:stage|registry.digitalocean.com/$REGISTRY_NAME/listapro-frontend:stage|g" K8s/stage/frontend/frontend-stage-deployment.yml
+sed -i "s|brunovn7/listapro-frontend:stage|registry.digitalocean.com/$REGISTRY_NAME/listapro-frontend:stage|g" K8s/frontend/frontend-deployment.yml
 
 # Deploy no Kubernetes
 echo "☸️  Deploying to Kubernetes..."
-kubectl apply -f K8s/stage/namespace-stage.yaml
-kubectl apply -f K8s/stage/ -R
+kubectl apply -f K8s/namespace.yaml
+kubectl apply -f K8s/ -R
 
 # Instalar Helm se não estiver instalado
 if ! command -v helm &> /dev/null; then
@@ -85,13 +85,13 @@ helm upgrade --install monitoring-stage ./helm/monitoring \
 
 # Verificar deployment
 echo "✅ Verifying deployment..."
-kubectl rollout status deployment/listapro-frontend-stage -n listapro-stage
-kubectl get pods -n listapro-stage
-kubectl get services -n listapro-stage
+kubectl rollout status deployment/listapro-frontend -n listapro
+kubectl get pods -n listapro
+kubectl get services -n listapro
 
 # Aguardar Load Balancer
 echo "⏳ Waiting for load balancer to be ready..."
-kubectl wait --for=condition=ready pod -l app=listapro-frontend-stage -n listapro-stage --timeout=300s
+kubectl wait --for=condition=ready pod -l app=listapro-frontend -n listapro --timeout=300s
 
 # Mostrar informações de deployment
 echo "🎉 Deployment completed successfully!"

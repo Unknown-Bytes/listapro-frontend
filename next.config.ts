@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://listapro-backend-prod-service:8080/api/:path*'
+        destination: 'http://listapro-backend-service:8080/api/:path*'
       }
     ];
   },

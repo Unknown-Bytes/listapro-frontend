@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: listapro-prod
-  labels:
-    name: listapro-prod
-    environment: production

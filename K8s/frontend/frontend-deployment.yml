@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: listapro-frontend-prod
-  namespace: listapro-prod
+  name: listapro-frontend
+  namespace: listapro
   labels:
-    app: listapro-frontend-prod
+    app: listapro-frontend
     environment: production
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
-      app: listapro-frontend-prod
+      app: listapro-frontend
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        app: listapro-frontend-prod
+        app: listapro-frontend
         environment: production
       annotations:
         prometheus.io/scrape: "true"

@@ -2,11 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: backend-config
-  namespace: listapro-stage
+  namespace: listapro
   labels:
-    app: listapro-backend-stage
+    app: listapro-backend
 data:
-  DB_HOST: "postgres.listapro-stage.svc.cluster.local"
+  DB_HOST: "postgres.listapro.svc.cluster.local"
   DB_NAME: "listapro"
   DB_USER: "backend"
   DB_PORT: "5432"

@@ -30,6 +30,7 @@ env:
   CLUSTER_NAME: listapro-staging-cluster
   IMAGE_NAME: listapro-frontend
   ENVIRONMENT: staging
+  NAMESPACE: listapro
 
 jobs:
   test:
@@ -178,21 +179,21 @@ jobs:
         rm frontend/frontend-stage-deployment-temp.yml
         
         # Wait for frontend deployment rollout
-        kubectl rollout status deployment/listapro-frontend-stage -n listapro-stage --timeout=300s
+        kubectl rollout status deployment/listapro-frontend -n ${{ env.NAMESPACE }} --timeout=300s
 
     - name: ✅ Verify deployment
       run: |
         echo "🔍 Verifying staging deployment..."
-        kubectl get pods -n listapro-stage
-        kubectl get services -n listapro-stage
-        kubectl get ingress -n listapro-stage 2>/dev/null || echo "No ingress configured"
+        kubectl get pods -n ${{ env.NAMESPACE }}
+        kubectl get services -n ${{ env.NAMESPACE }}
+        kubectl get ingress -n ${{ env.NAMESPACE }} 2>/dev/null || echo "No ingress configured"
         
         # Check if pods are running
-        if kubectl get pods -n listapro-stage -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
+        if kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{.items[*].status.phase}' | grep -q "Running"; then
           echo "✅ Frontend pods are running successfully"
         else
           echo "❌ Some frontend pods are not running"
-          kubectl describe pods -n listapro-stage -l app=listapro-frontend-stage
+          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=listapro-frontend
         fi
 
     - name: 🧹 Clean old images (Optional - Docker Hub)
@@ -227,8 +228,8 @@ jobs:
         echo ""
         echo "🔗 Useful commands:"
         echo "doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}"
-        echo "kubectl get pods -n listapro-stage"
-        echo "kubectl logs -f deployment/listapro-frontend-stage -n listapro-stage"
+        echo "kubectl get pods -n ${{ env.NAMESPACE }}"
+        echo "kubectl logs -f deployment/listapro-frontend -n ${{ env.NAMESPACE }}"
 
     # - name: 📊 Usando chart padrão do Prometheus
     #   run: |

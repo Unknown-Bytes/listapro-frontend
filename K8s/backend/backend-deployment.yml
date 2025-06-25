@@ -1,15 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: listapro-backend-prod
-  namespace: listapro-prod
+  name: listapro-backend
+  namespace: listapro
   labels:
-    app: listapro-backend-prod
+    app: listapro-backend
+    environment: production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: listapro-backend-prod
+      app: listapro-backend
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -18,7 +19,8 @@ spec:
   template:
     metadata:
       labels:
-        app: listapro-backend-prod
+        app: listapro-backend
+        environment: production
     spec:
       containers:
         - name: backend
@@ -26,11 +28,11 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
               memory: "128Mi"
               cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "250m"
           ports:
             - containerPort: 8080
           readinessProbe:
