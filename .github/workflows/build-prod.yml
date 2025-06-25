@@ -68,7 +68,7 @@ jobs:
       - name: Configurar acesso ao GKE
         run: |
           export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-          gcloud container clusters get-credentials listapro-cluster \
+          gcloud container clusters get-credentials listapro-cluster-final \
             --zone us-central1-a \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
