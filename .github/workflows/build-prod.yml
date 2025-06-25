@@ -126,30 +126,29 @@ jobs:
       with:
         version: '3.12.0'
 
-    - name: Deploy Monitoring Stack
-      run: |
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-        helm repo add grafana https://grafana.github.io/helm-charts
-        helm repo update
-        
-        # Verificar se o chart customizado existe
-        if [ -d "./helm/monitoring" ]; then
-          echo "📊 Usando chart customizado de monitoring"
-          helm dependency build ./helm/monitoring
-          helm upgrade --install monitoring-prod ./helm/monitoring \
-            --namespace monitoring-prod \
-            --create-namespace \
-            --values ./helm/monitoring/values-production.yaml \
-            --wait \
-            --timeout 10m
-        else
-          echo "📊 Usando chart padrão do Prometheus"
-          helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
-            --namespace monitoring-prod \
-            --create-namespace \
-            --wait \
-            --timeout 10m
-        fi
+    # - name: Deploy Monitoring Stack
+    #   run: |
+    #     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    #     helm repo add grafana https://grafana.github.io/helm-charts
+    #     helm repo update
+    #     
+    #     # Verificar se o chart customizado existe
+    #     if [ -d "./helm/monitoring" ]; then
+    #       echo "📊 Usando chart customizado de monitoring"
+    #       helm upgrade --install monitoring-prod ./helm/monitoring \
+    #         --namespace monitoring-prod \
+    #         --create-namespace \
+    #         --values ./helm/monitoring/values-production.yaml \
+    #         --wait \
+    #         --timeout 10m
+    #     else
+    #       echo "📊 Usando chart padrão do Prometheus"
+    #       helm upgrade --install monitoring-prod prometheus-community/kube-prometheus-stack \
+    #         --namespace monitoring-prod \
+    #         --create-namespace \
+    #         --wait \
+    #         --timeout 10m
+    #     fi
 
     - name: Deploy Applications
       run: |
