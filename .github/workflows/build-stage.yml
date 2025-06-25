@@ -2,7 +2,7 @@ name: Deploy Staging Environment
 
 on:
   push:
-    branches: [ develop, staging ]
+    branches: [ release ]
     paths:
       - 'app/**'
       - 'components/**'
@@ -25,8 +25,8 @@ on:
         type: boolean
 
 env:
-  REGISTRY: registry.digitalocean.com
-  REGISTRY_NAME: listapro-staging-registry
+  REGISTRY: docker.io
+  REGISTRY_NAME: brunovn7
   CLUSTER_NAME: listapro-staging-cluster
   IMAGE_NAME: listapro-frontend
   ENVIRONMENT: staging
@@ -98,26 +98,24 @@ jobs:
         fi
         echo "short_sha=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-    - name: 🌊 Setup DigitalOcean CLI
-      uses: digitalocean/action-doctl@v2
+    - name: 🔐 Log in to Docker Hub
+      uses: docker/login-action@v3
       with:
-        token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          
-    - name: 🔐 Log in to DigitalOcean Container Registry
-      run: doctl registry login
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
             
     - name: 🏗️ Build Docker image
       run: |
         docker build \
-          -t ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
-          -t ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest \
-          -t ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} .
+          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
+          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest \
+          -t ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} .
             
     - name: 📤 Push Docker images
       run: |
-        docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
-        docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest
-        docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
 
   deploy-staging:
     needs: [check-infrastructure, build-and-push]
@@ -167,7 +165,7 @@ jobs:
         cp frontend/frontend-stage-deployment.yml frontend/frontend-stage-deployment-temp.yml
         
         # Update image tag in deployment
-        sed -i "s|brunovn7/listapro-frontend:stage|${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-stage-deployment-temp.yml
+        sed -i "s|brunovn7/listapro-frontend:stage|${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" frontend/frontend-stage-deployment-temp.yml
         
         # Apply all manifests
         kubectl apply -f DB/ || echo "Database already deployed or not needed"
@@ -197,15 +195,10 @@ jobs:
           kubectl describe pods -n listapro-stage -l app=listapro-frontend-stage
         fi
 
-    - name: 🧹 Clean old images (Optional)
+    - name: 🧹 Clean old images (Optional - Docker Hub)
       run: |
-        echo "🧹 Cleaning up old images..."
-        # Keep last 5 images
-        doctl registry repository list-tags ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }} --format Tag | tail -n +6 | head -n -1 | while read tag; do
-          if [ "$tag" != "latest" ] && [ "$tag" != "${{ github.sha }}" ]; then
-            doctl registry repository delete-tag ${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }} $tag --force 2>/dev/null || true
-          fi
-        done
+        echo "🧹 Docker Hub cleanup skipped (manual process)"
+        echo "💡 To clean manually: docker image prune or use Docker Hub web interface"
       continue-on-error: true
 
   summary:
@@ -222,7 +215,7 @@ jobs:
         echo "=========="
         echo "Environment: staging"
         echo "Cloud: Digital Ocean"
-        echo "Registry: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAME }}"
+        echo "Registry: Docker Hub (${{ env.REGISTRY_NAME }})"
         echo "Image: ${{ env.IMAGE_NAME }}"
         echo "Cluster: ${{ env.CLUSTER_NAME }}"
         echo ""
